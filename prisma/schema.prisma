@@ -1,0 +1,122 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  PENDING
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TranscriptionLanguage {
+  auto
+  en
+  es
+  fr
+  de
+  it
+  pt
+  ru
+  ja
+  ko
+  zh
+}
+
+enum OutputFormat {
+  json
+  srt
+  vtt
+  txt
+  tsv
+}
+
+enum PlanTier {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  planTier      PlanTier @default(FREE)
+  monthlyQuota  Int      @default(60)    // minutes per month
+  usedMinutes   Float    @default(0)
+  quotaResetAt  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  jobs          Job[]
+  refreshTokens RefreshToken[]
+
+  @@index([email])
+}
+
+model Job {
+  id              String                @id @default(uuid())
+  userId          String
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // File metadata
+  originalFileName String
+  fileKey         String                // storage key (local path or S3 key)
+  fileSizeBytes   Int
+  durationSeconds Float?
+
+  // Transcription parameters
+  language        TranscriptionLanguage @default(auto)
+  outputFormat    OutputFormat          @default(json)
+  modelSize       String                @default("base")  // tiny|base|small|medium|large
+  enableDiarization Boolean             @default(false)
+  enableTimestamps  Boolean             @default(true)
+
+  // Job lifecycle
+  status          JobStatus             @default(PENDING)
+  bullJobId       String?               // BullMQ job ID
+  queuedAt        DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  failedAt        DateTime?
+  errorMessage    String?
+  retryCount      Int                   @default(0)
+  progress        Int                   @default(0)         // 0–100
+
+  // Results
+  resultKey       String?               // storage key for result file
+  resultText      String?               // plain text preview (first 500 chars)
+  wordCount       Int?
+  charCount       Int?
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([bullJobId])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}

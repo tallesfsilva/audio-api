@@ -1,0 +1,30 @@
+# Development Dockerfile — uses tsx watch for hot reload
+FROM node:20-alpine
+WORKDIR /app
+
+ENV NODE_ENV=development
+
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser  --system --uid 1001 appuser
+
+COPY package*.json ./
+RUN npm ci --frozen-lockfile
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Storage & logs dirs
+RUN mkdir -p /app/storage/uploads /app/storage/results /app/logs \
+ && chown -R appuser:nodejs /app
+
+USER appuser
+
+EXPOSE 3000
+
+# Source is bind-mounted; entrypoint handles migrations + dev server
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+USER root
+RUN chmod +x /docker-entrypoint.sh
+USER appuser
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

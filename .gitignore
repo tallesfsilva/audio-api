@@ -1,0 +1,27 @@
+# Dependencies
+node_modules
+
+# Build
+dist
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.production
+
+# Storage & logs
+storage
+logs
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Prisma
+prisma/migrations/dev_*
+
+# Coverage
+coverage
+.nyc_output

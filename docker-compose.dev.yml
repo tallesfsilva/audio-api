@@ -1,0 +1,108 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: whisper_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: whisper
+      POSTGRES_PASSWORD: whisper_secret
+      POSTGRES_DB: whisper_saas
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - whisper_dev_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whisper -d whisper_saas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: whisper_redis_dev
+    restart: unless-stopped
+    command: redis-server --requirepass redis_secret --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - whisper_dev_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: whisper_api_dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      API_PREFIX: /api/v1
+
+      DATABASE_URL: postgresql://whisper:whisper_secret@postgres:5432/whisper_saas?schema=public
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_secret
+      REDIS_DB: 0
+
+      JWT_ACCESS_SECRET: dev_access_secret_at_least_32_characters_long
+      JWT_REFRESH_SECRET: dev_refresh_secret_at_least_32_characters_long
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN: 7d
+
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_BASE_PATH: /app/storage
+      STORAGE_LOCAL_MAX_SIZE_MB: 500
+
+      QUEUE_NAME: transcription
+      QUEUE_CONCURRENCY: 5
+      QUEUE_MAX_RETRIES: 3
+      QUEUE_BACKOFF_DELAY_MS: 5000
+
+      RATE_LIMIT_WINDOW_MS: 60000
+      RATE_LIMIT_MAX_REQUESTS: 1000
+
+      CORS_ORIGIN: http://localhost:5173
+
+    volumes:
+      # Bind-mount source for hot reload
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      # Persist storage & logs across restarts
+      - storage_dev_data:/app/storage
+      - api_dev_logs:/app/logs
+      # Don't override node_modules inside container
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - whisper_dev_net
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  storage_dev_data:
+  api_dev_logs:
+
+networks:
+  whisper_dev_net:
+    driver: bridge

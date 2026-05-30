@@ -1,0 +1,136 @@
+services:
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: whisper_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-whisper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-whisper_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-whisper_saas}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_EXTERNAL_PORT:-5432}:5432"
+    networks:
+      - whisper_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-whisper} -d ${POSTGRES_DB:-whisper_saas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: whisper_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-redis_secret}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfilename "appendonly.aof"
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_EXTERNAL_PORT:-6379}:6379"
+    networks:
+      - whisper_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── Node API ─────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: whisper_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: /api/v1
+
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-whisper}:${POSTGRES_PASSWORD:-whisper_secret}@postgres:5432/${POSTGRES_DB:-whisper_saas}?schema=public
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      REDIS_DB: 0
+
+      # JWT — override in .env with strong secrets!
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_access_secret_min_32_chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_refresh_secret_min_32_chars}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+
+      # Storage
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_BASE_PATH: /app/storage
+      STORAGE_LOCAL_MAX_SIZE_MB: ${STORAGE_LOCAL_MAX_SIZE_MB:-500}
+
+      # S3 (optional)
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+
+      # Queue
+      QUEUE_NAME: ${QUEUE_NAME:-transcription}
+      QUEUE_CONCURRENCY: ${QUEUE_CONCURRENCY:-5}
+      QUEUE_MAX_RETRIES: ${QUEUE_MAX_RETRIES:-3}
+      QUEUE_BACKOFF_DELAY_MS: ${QUEUE_BACKOFF_DELAY_MS:-5000}
+
+      # Rate limiting
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+
+    volumes:
+      - storage_data:/app/storage
+      - api_logs:/app/logs
+    ports:
+      - "${API_EXTERNAL_PORT:-3000}:3000"
+    networks:
+      - whisper_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  storage_data:
+    driver: local
+  api_logs:
+    driver: local
+
+networks:
+  whisper_net:
+    driver: bridge
