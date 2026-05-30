@@ -90,10 +90,40 @@ services:
       # Persist storage & logs across restarts
       - storage_dev_data:/app/storage
       - api_dev_logs:/app/logs
-      # Don't override node_modules inside container
+      # Prevent host node_modules from overriding the container's
       - /app/node_modules
     ports:
       - "3000:3000"
+    networks:
+      - whisper_dev_net
+
+  worker:
+    build:
+      context: ./python-worker
+      dockerfile: Dockerfile
+    container_name: whisper_worker_dev
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis_secret
+      REDIS_DB: 0
+      QUEUE_NAME: transcription
+      WORKER_CONCURRENCY: 1
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_BASE_PATH: /app/storage
+      WHISPER_MODEL_CACHE: /app/models
+      WHISPER_DEFAULT_MODEL: base
+      WHISPER_COMPUTE_TYPE: int8
+      WHISPER_DEVICE: cpu
+    volumes:
+      - storage_dev_data:/app/storage
+      - whisper_models_dev:/app/models
+      # Bind-mount source for live reload during dev
+      - ./python-worker/app:/app/app
     networks:
       - whisper_dev_net
 
@@ -102,6 +132,7 @@ volumes:
   redis_dev_data:
   storage_dev_data:
   api_dev_logs:
+  whisper_models_dev:
 
 networks:
   whisper_dev_net:

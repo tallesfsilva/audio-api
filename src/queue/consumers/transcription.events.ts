@@ -1,16 +1,13 @@
 // src/queue/consumers/transcription.events.ts
-// This module listens to BullMQ QueueEvents so the Node API can react
-// to job state changes emitted by the Python worker process.
-
 import { QueueEvents } from 'bullmq';
-import { bullMQConnection } from '../../infrastructure/redis/client';
+import { bullMQConnectionOptions } from '../../infrastructure/redis/client';
 import { config } from '../../config';
 import { logger } from '../../shared/utils/logger';
 import { jobRepository } from '../../modules/jobs/repository/jobs.repository';
 
 export function startQueueEventListeners(): void {
   const queueEvents = new QueueEvents(config.QUEUE_NAME, {
-    connection: bullMQConnection,
+    connection: bullMQConnectionOptions,
   });
 
   queueEvents.on('waiting', ({ jobId }) => {
@@ -25,8 +22,6 @@ export function startQueueEventListeners(): void {
   });
 
   queueEvents.on('completed', async ({ jobId }) => {
-    // Final result is written via the internal callback route;
-    // this event confirms BullMQ agrees the job is done.
     logger.info('Job completed (BullMQ)', { jobId });
   });
 

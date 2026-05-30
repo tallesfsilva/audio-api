@@ -2,7 +2,8 @@
 import path from 'path';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { Job, Prisma } from '@prisma/client';
+import { Job } from '../../../shared/types/domain';
+import {Prisma} from '@prisma/client';
 import { config } from '../../../config';
 import { jobRepository } from '../../jobs/repository/jobs.repository';
 import { transcriptionQueue } from '../../../queue/producers/transcription.producer';
@@ -47,7 +48,7 @@ class UploadService {
       enableTimestamps: params.enableTimestamps,
     };
 
-    // const job = await jobRepository.create(jobData);
+    const job = await jobRepository.create(jobData);
 
     // 4. Build queue payload
     const callbackUrl = `${config.NODE_ENV === 'production' ? 'http://api:3000' : `http://localhost:${config.PORT}`}${config.API_PREFIX}/internal/jobs/${jobId}/callback`;

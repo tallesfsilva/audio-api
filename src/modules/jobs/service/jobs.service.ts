@@ -1,8 +1,8 @@
 // src/modules/jobs/service/jobs.service.ts
-import { Job, JobStatus } from '@prisma/client';
+import { Job, JobStatus } from '../../../shared/types/domain';
 import { jobRepository, JobsPage, ListJobsFilter } from '../repository/jobs.repository';
 import { transcriptionQueue } from '../../../queue/producers/transcription.producer';
-import { NotFoundError, AppError } from '../../../shared/errors';
+import { ForbiddenError, NotFoundError, AppError } from '../../../shared/errors';
 import { TranscriptionResult } from '../../../shared/types/queue';
 import { deleteFile } from '../../../infrastructure/storage/local.driver';
 import { logger } from '../../../shared/utils/logger';

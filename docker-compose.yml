@@ -121,6 +121,54 @@ services:
       retries: 5
       start_period: 40s
 
+  # ── Python Whisper Worker ────────────────────────────────────────────────────
+  worker:
+    build:
+      context: ./python-worker
+      dockerfile: Dockerfile
+      args:
+        PRELOAD_MODEL: ${WHISPER_DEFAULT_MODEL:-base}
+    container_name: whisper_worker
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret}
+      REDIS_DB: 0
+
+      QUEUE_NAME: ${QUEUE_NAME:-transcription}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_BASE_PATH: /app/storage
+
+      WHISPER_MODEL_CACHE: /app/models
+      WHISPER_DEFAULT_MODEL: ${WHISPER_DEFAULT_MODEL:-base}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+
+    volumes:
+      # Share the same storage volume as the API so the worker can read uploads
+      - storage_data:/app/storage
+      # Persist downloaded Whisper models across restarts
+      - whisper_models:/app/models
+    networks:
+      - whisper_net
+
+    # Uncomment for GPU support (requires nvidia-container-toolkit on the host)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
 volumes:
   postgres_data:
     driver: local
@@ -129,6 +177,8 @@ volumes:
   storage_data:
     driver: local
   api_logs:
+    driver: local
+  whisper_models:
     driver: local
 
 networks:
