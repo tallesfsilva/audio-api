@@ -33,7 +33,7 @@ async function bootstrap(): Promise<void> {
 
   // 4. Start HTTP server
   const app = createApp();
-  const server = app.listen(config.PORT, () => {
+  const server = app.listen(config.PORT, "0.0.0.0", () => {
     logger.info(`✅  API listening on http://localhost:${config.PORT}${config.API_PREFIX}`);
   });
 
