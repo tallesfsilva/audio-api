@@ -30,10 +30,10 @@ async function bootstrap(): Promise<void> {
 
   // 3. BullMQ queue event listeners
   startQueueEventListeners();
-
+  const PORT = config.PORT || 8080
   // 4. Start HTTP server
   const app = createApp();
-  const server = app.listen(config.PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`✅  API listening on http://localhost:${config.PORT}${config.API_PREFIX}`);
   });
 
