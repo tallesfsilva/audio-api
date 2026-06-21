@@ -51,6 +51,6 @@ RUN mkdir -p /app/storage/uploads /app/storage/results /app/logs \
 
 USER appuser
 
-EXPOSE 3000
+EXPOSE 8080
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
