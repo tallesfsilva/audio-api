@@ -21,7 +21,7 @@ import internalRouter from './modules/internal/internal.router';
 import paymentsRouter from './modules/payments/payments.router';
 import adminRouter from './modules/admin/admin.router'
 import { transcriptionsRouter } from './modules/transcription/transcriptions.routes';
-import z from 'zod';
+
    
 
 export function createApp(): Application {

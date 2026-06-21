@@ -1,5 +1,5 @@
 // src/modules/payments/payments.router.ts
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import express from 'express';
 import { paymentsController } from './controller/payments.controller';
 import { authenticate } from '../../shared/guards/authenticate';

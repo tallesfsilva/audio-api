@@ -52,10 +52,6 @@ services:
 
       # CORS
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-
-    volumes:
-      - storage_data:/app/storage
-      - api_logs:/app/logs
     ports:
       - "${API_EXTERNAL_PORT:-3000}:3000"
     networks:

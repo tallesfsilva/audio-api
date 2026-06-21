@@ -27,7 +27,7 @@ function verifyCallbackSignature(req: Request): void {
   const signature = req.headers['x-callback-signature'] as string | undefined;
   if (!signature) throw new UnauthorizedError('Missing callback signature');
 
-  const body = JSON.stringify(req.body);
+
    const rawBody = (req as any).rawBody;
   if (!rawBody) throw new UnauthorizedError('Missing raw body for signature verification');
 
@@ -84,7 +84,7 @@ const ResultSchema = z.object({
 
 /** POST /api/v1/internal/jobs/:id/progress */
 router.post('/jobs/:id/progress',  express.json({
-  verify: (req: Request, res, buf) => {
+  verify: (req: Request, _res, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   }
 }), async (req: Request, res: Response) => {
@@ -116,7 +116,7 @@ router.post('/jobs/:id/progress',  express.json({
 
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
-  verify: (req: Request, res:Response, buf) => {
+  verify: (req: Request, _res:Response, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   },
 }), async (req: Request, res: Response, next: NextFunction) => {

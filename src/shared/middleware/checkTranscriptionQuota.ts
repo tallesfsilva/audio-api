@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../infrastructure/database/client';
 import { logger } from '../utils/logger';
 
-const VALID_ACTIVE_STATUSES = ['ACTIVE'] as const;
 
 export async function checkTranscriptionQuota(
   req: Request,

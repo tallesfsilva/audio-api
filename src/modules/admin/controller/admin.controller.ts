@@ -29,7 +29,7 @@ class AdminController {
     res.json(result);
   }
 
-  async getRevenueStats(req: Request, res: Response) {
+  async getRevenueStats(res: Response) {
     const result = await adminService.getRevenueStats();
     res.json(result);
   }
