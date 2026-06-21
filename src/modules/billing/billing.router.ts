@@ -5,13 +5,10 @@ import { authenticate } from '../../shared/guards/authenticate';
 
 const router = Router();
 
-/** GET /api/v1/billing/plans — public, no auth needed */
+/** GET /api/v1/billing/plans — public */
 router.get('/plans', (req, res) => billingController.getPlans(req, res));
 
-/** GET /api/v1/billing/overview — current user usage & plan */
+/** GET /api/v1/billing/overview — usage + plan + subscription status */
 router.get('/overview', authenticate, (req, res) => billingController.getOverview(req, res));
-
-/** POST /api/v1/billing/select-plan — mock plan selection */
-router.post('/select-plan', authenticate, (req, res) => billingController.selectPlan(req, res));
 
 export default router;

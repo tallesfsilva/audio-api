@@ -1,5 +1,6 @@
 // src/modules/jobs/repository/jobs.repository.ts
-import { Job, JobStatus, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import {Job, JobStatus,} from '../../../shared/types/domain'
 import { prisma } from '../../../infrastructure/database/client';
 
 export interface JobsPage {
@@ -34,12 +35,15 @@ class JobsRepository {
     const page = Math.max(1, filter.page ?? 1);
     const pageSize = Math.min(50, Math.max(1, filter.pageSize ?? 20));
     const skip = (page - 1) * pageSize;
-
-    const where: Prisma.JobWhereInput = {
+   let where:Prisma.JobWhereInput = {}
+    if(filter.userId) {
+      where = {
       userId: filter.userId,
       ...(filter.status ? { status: filter.status } : {}),
     };
 
+    }
+  
     const [items, total] = await prisma.$transaction([
       prisma.job.findMany({
         where,
@@ -96,6 +100,8 @@ class JobsRepository {
       charCount?: number;
       resultKey?: string;
       resultText?: string;
+      resultTextKey?: string;
+      transcription?: string;
     },
   ): Promise<Job> {
     return prisma.job.update({

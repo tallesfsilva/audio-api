@@ -1,5 +1,6 @@
 # Dependencies
 node_modules
+python-worker
 
 # Build
 dist
@@ -12,6 +13,9 @@ dist
 # Storage & logs
 storage
 logs
+
+#Worker
+python-worker/
 
 # OS & editor
 .DS_Store

@@ -1,7 +1,7 @@
 // src/modules/auth/service/auth.service.ts
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User } from '@prisma/client';
+import { $Enums, User } from '@prisma/client';
 import { config } from '../../../config';
 import { authRepository } from '../repository/auth.repository';
 import { ConflictError, UnauthorizedError } from '../../../shared/errors';
@@ -22,6 +22,7 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
+ 
 export interface PublicUser {
   id: string;
   email: string;
@@ -29,6 +30,7 @@ export interface PublicUser {
   planTier: string;
   monthlyQuota: number;
   usedMinutes: number;
+  role:$Enums.UserRole;
 }
 
 function toPublicUser(user: User): PublicUser {
@@ -39,6 +41,7 @@ function toPublicUser(user: User): PublicUser {
     planTier: user.planTier,
     monthlyQuota: user.monthlyQuota,
     usedMinutes: user.usedMinutes,
+    role: user.role
   };
 }
 
@@ -59,6 +62,16 @@ class AuthService {
     return { user: toPublicUser(user), tokens };
   }
 
+
+    async me(email: string): Promise<AuthResponse> {
+    const user = await authRepository.findUserByEmail(email);
+    if (!user) throw new UnauthorizedError('Invalid email');
+
+    const tokens = await this.generateTokens(user);
+    return { user: toPublicUser(user), tokens };
+  }
+
+
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await authRepository.findUserByEmail(dto.email);
     if (!user) throw new UnauthorizedError('Invalid email or password');
@@ -78,6 +91,9 @@ class AuthService {
 
     // Rotate refresh token (single-use)
     await authRepository.deleteRefreshToken(refreshToken);
+    await authRepository.deleteManyRefreshToken(record.userId)
+
+   
     return this.generateTokens(record.user);
   }
 
@@ -94,6 +110,7 @@ class AuthService {
       sub: user.id,
       email: user.email,
       plan: user.planTier,
+      role: user.role
     };
 
     const accessToken = jwt.sign(payload, config.JWT_ACCESS_SECRET, {

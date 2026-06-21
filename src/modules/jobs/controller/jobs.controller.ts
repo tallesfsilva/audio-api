@@ -7,15 +7,24 @@ import { UnauthorizedError } from '../../../shared/errors';
 
 class JobsController {
   async list(req: Request, res: Response): Promise<void> {
+   try{
     if (!req.user) throw new UnauthorizedError();
     const query = ListJobsQuerySchema.parse(req.query);
-    const page = await jobsService.list(req.user.sub, query);
+    let userID = ""
+    if (req.user.role !== "ADMIN"){
+         userID = req.user.sub
+    }
+    const page = await jobsService.list(userID, query);
     respond(res, page.items, 200, {
       total: page.total,
       page: page.page,
       pageSize: page.pageSize,
       totalPages: page.totalPages,
     });
+   }catch(e){
+    console.error(e)
+   }
+
   }
 
   async getById(req: Request, res: Response): Promise<void> {
@@ -23,6 +32,14 @@ class JobsController {
     const { id } = JobIdParamSchema.parse(req.params);
     const job = await jobsService.getById(id, req.user.sub);
     respond(res, job);
+  }
+
+   async download(req: Request, res: Response): Promise<void> {
+    if (!req.user) throw new UnauthorizedError();
+    const {type} = req.query
+    const { id } = JobIdParamSchema.parse(req.params);
+    const url = await jobsService.download(id, type as string);
+    respond(res, url);
   }
 
   async cancel(req: Request, res: Response): Promise<void> {

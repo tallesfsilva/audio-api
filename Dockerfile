@@ -1,17 +1,19 @@
 # ─── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
-
+RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 RUN npm install --omit=dev
 
 # ─── Stage 2: builder ─────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
 COPY tsconfig.json ./
 RUN npm install
+
+ 
 
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -20,11 +22,11 @@ COPY src ./src
 RUN npm run build
 
 # ─── Stage 3: runner (production image) ───────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
-
+RUN apk add --no-cache openssl libc6-compat
 ENV NODE_ENV=production
-
+ 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 appuser
@@ -37,7 +39,11 @@ RUN chmod +x /docker-entrypoint.sh
 COPY --from=deps    /app/node_modules         ./node_modules
 COPY --from=builder /app/dist                 ./dist
 COPY --from=builder /app/prisma               ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Copy runtime files
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+RUN npx prisma generate
 
 # Storage & logs directories
 RUN mkdir -p /app/storage/uploads /app/storage/results /app/logs \

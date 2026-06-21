@@ -7,10 +7,18 @@ import { connectRedis, disconnectRedis } from './infrastructure/redis/client';
 import { ensureStorageDir } from './infrastructure/storage/local.driver';
 import { transcriptionQueue } from './queue/producers/transcription.producer';
 import { startQueueEventListeners } from './queue/consumers/transcription.events';
+import { initializeSocket } from './infrastructure/socket';
+// src/config/index.ts
+ 
+ 
+import 'dotenv/config';
+
+ 
 
 async function bootstrap(): Promise<void> {
+   
   logger.info(`Starting Whisper SaaS API [${config.NODE_ENV}]`);
-
+ 
   // 1. Infrastructure connections
   await connectDatabase();
   await connectRedis();
@@ -27,6 +35,15 @@ async function bootstrap(): Promise<void> {
   const app = createApp();
   const server = app.listen(config.PORT, () => {
     logger.info(`✅  API listening on http://localhost:${config.PORT}${config.API_PREFIX}`);
+  });
+
+    // Socket.IO
+  const io = initializeSocket(server);
+
+  server.requestTimeout = 60 * 60 * 1000; // 1 hour
+    // Example broadcast
+  io.emit('server:started', {
+    timestamp: new Date().toISOString(),
   });
 
   // ── Graceful shutdown ────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { UnauthorizedError } from '../errors';
+import { $Enums } from '@prisma/client';
 
 export interface JwtPayload {
   sub: string;       // user id
@@ -10,6 +11,7 @@ export interface JwtPayload {
   plan: string;
   iat: number;
   exp: number;
+  role:$Enums.UserRole;
 }
 
 declare global {

@@ -47,62 +47,80 @@ enum PlanTier {
   ENTERPRISE
 }
 
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String
-  name          String
-  planTier      PlanTier @default(FREE)
-  monthlyQuota  Int      @default(60)    // minutes per month
-  usedMinutes   Float    @default(0)
-  quotaResetAt  DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String        @id @default(uuid())
+  email            String        @unique
+  passwordHash     String
+  name             String
+  planTier         PlanTier      @default(FREE)
+  monthlyQuota     Int           @default(60)
+  usedMinutes      Float         @default(0)
+  quotaResetAt     DateTime      @default(now())
+  stripeCustomerId String?       @unique
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  jobs          Job[]
-  refreshTokens RefreshToken[]
-
+  jobs             Job[]
+  refreshTokens    RefreshToken[]
+  subscription     Subscription?
+  role  UserRole  @default(USER)
   @@index([email])
+  @@index([stripeCustomerId])
 }
 
 model Job {
-  id              String                @id @default(uuid())
-  userId          String
-  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String                @id @default(uuid())
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // File metadata
   originalFileName String
-  fileKey         String                // storage key (local path or S3 key)
-  fileSizeBytes   Int
-  durationSeconds Float?
+  fileKey          String
+  fileSizeBytes    String
+  durationSeconds  Float?
 
-  // Transcription parameters
-  language        TranscriptionLanguage @default(auto)
-  outputFormat    OutputFormat          @default(json)
-  modelSize       String                @default("base")  // tiny|base|small|medium|large
-  enableDiarization Boolean             @default(false)
-  enableTimestamps  Boolean             @default(true)
+  language         TranscriptionLanguage @default(auto)
+  outputFormat     OutputFormat          @default(json)
+  modelSize        String                @default("base")
+  enableDiarization Boolean              @default(false)
+  enableTimestamps  Boolean              @default(true)
 
-  // Job lifecycle
-  status          JobStatus             @default(PENDING)
-  bullJobId       String?               // BullMQ job ID
-  queuedAt        DateTime?
-  startedAt       DateTime?
-  completedAt     DateTime?
-  failedAt        DateTime?
-  errorMessage    String?
-  retryCount      Int                   @default(0)
-  progress        Int                   @default(0)         // 0–100
+  status           JobStatus             @default(PENDING)
+  bullJobId        String?
+  queuedAt         DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  failedAt         DateTime?
+  errorMessage     String?
+  retryCount       Int                   @default(0)
+  progress         Int                   @default(0)
 
-  // Results
-  resultKey       String?               // storage key for result file
-  resultText      String?               // plain text preview (first 500 chars)
-  wordCount       Int?
-  charCount       Int?
-
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-
+  resultKey        String?
+  resultText       String?
+  resultTextKey    String?
+  wordCount        Int?
+  charCount        Int?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  estimatedJobDurationSecs Int           @default(0)
+  estimatedJobDurationMin String         @default("")
+  totalAudioDurationSec Int              @default(0)
+  queuePosition Int                      @default(0)
+  queueStartJobEstimation Int            @default(0)
   @@index([userId])
   @@index([status])
   @@index([bullJobId])
@@ -119,4 +137,167 @@ model RefreshToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model Payment {
+  id                    String        @id @default(uuid())
+
+  subscriptionId        String
+  subscription          Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  stripeInvoiceId       String?       @unique
+  stripePaymentIntentId String?       @unique
+  stripeChargeId        String?       @unique
+
+  amountCents           Int
+  currency              String
+
+  status                PaymentStatus
+
+  paidAt                DateTime?
+
+  invoicePdf            String?
+  receiptUrl            String?
+
+  stripeEventId         String?       @unique
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  stripeData            Json         @default("{}")
+
+  @@index([subscriptionId])
+  @@index([stripeInvoiceId])
+  @@index([stripePaymentIntentId])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  stripeProductId      String
+
+  planTier             PlanTier
+  payments             Payment[]
+
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  trialEnd             DateTime?
+  amountCents          Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@index([userId])
+}
+
+
+model Transcription {
+  id              String          @id @default(uuid()) @db.Uuid
+
+  jobId           String          @unique
+  userId          String          @db.Uuid
+
+  filename        String
+  language        String?
+
+  durationSeconds Decimal?        @db.Decimal(10, 3)
+
+  wordCount       Int             @default(0)
+  charCount       Int             @default(0)
+
+  transcript      String?         @db.Text
+
+  resultKey       String?
+  resultTextKey   String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  segments        TranscriptionSegment[]
+  quotes          TranscriptQuote[]
+
+  @@index([jobId])
+  @@index([userId])
+
+ 
+}
+
+model TranscriptionSegment {
+  id              BigInt          @id @default(autoincrement())
+
+  transcriptionId String          @db.Uuid
+
+  segmentId       Int
+
+  startTime       Decimal         @db.Decimal(12, 3)
+  endTime         Decimal         @db.Decimal(12, 3)
+
+  text            String          @db.Text
+
+  createdAt       DateTime        @default(now())
+
+  transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  words           TranscriptionWord[]
+
+  @@index([transcriptionId])
+  @@index([segmentId])
+
+ 
+}
+
+model TranscriptionWord {
+  id              BigInt          @id @default(autoincrement())
+
+  segmentDbId     BigInt
+
+  word            String
+
+  startTime       Decimal?        @db.Decimal(12, 3)
+  endTime         Decimal?        @db.Decimal(12, 3)
+
+  probability     Decimal?        @db.Decimal(8, 6)
+
+   segment      TranscriptionSegment @relation(fields: [segmentDbId], references: [id], onDelete: Cascade)
+
+  @@index([segmentDbId])
+
+ 
+}
+
+model TranscriptQuote {
+  id              String          @id @default(uuid()) @db.Uuid
+
+  transcriptionId String          @db.Uuid
+
+  quote           String          @db.Text
+
+  startTime       Decimal?        @db.Decimal(12, 3)
+  endTime         Decimal?        @db.Decimal(12, 3)
+
+  relevanceScore  Decimal?        @db.Decimal(10, 4)
+
+  createdAt       DateTime        @default(now())
+
+  transcription    Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+
+  @@index([transcriptionId])
+ 
 }

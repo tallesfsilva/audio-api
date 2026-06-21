@@ -7,6 +7,7 @@ export interface ApiResponse<T> {
   message?: string;
   meta?: Record<string, unknown>;
 }
+ 
 
 export const respond = <T>(
   res: Response,
@@ -14,6 +15,7 @@ export const respond = <T>(
   statusCode = 200,
   meta?: Record<string, unknown>,
 ): void => {
+  
   res.status(statusCode).json({
     success: true,
     data,

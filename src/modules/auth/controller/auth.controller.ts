@@ -38,7 +38,9 @@ class AuthController {
 
   async me(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
-    respond(res, { user: req.user });
+      const result = await authService.me(req.user.email);
+    respond(res, result);
+ 
   }
 }
 

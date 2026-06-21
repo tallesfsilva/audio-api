@@ -2,6 +2,8 @@
 // These types define the contract between the Node API and the Python worker.
 // Keep in sync with the Python worker's type definitions.
 
+import { Segment } from "./domain";
+
 export type ModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large' | 'large-v2' | 'large-v3';
 
 export type TranscriptionLanguage =
@@ -23,7 +25,9 @@ export interface TranscriptionJobData {
   outputFormat: OutputFormat;
   enableDiarization: boolean;
   enableTimestamps: boolean;
-
+  estimatedJobDurationSecs: number;
+  estimatedJobDurationMin: string;
+  totalAudioDurationSec: number;
   // Callback info (worker POSTs progress/results here)
   callbackUrl: string;       // e.g. http://api:3000/internal/jobs/:id/callback
   callbackSecret: string;    // HMAC secret for callback verification
@@ -46,6 +50,9 @@ export interface TranscriptionResult {
   resultKey?: string;        // storage path for full transcript file
   resultText?: string;       // first 500 chars preview
   errorMessage?: string;
+  resultTextKey?: string;
+  segments?: Segment[];
+  transcription?: string;
 }
 
 /** BullMQ job names */
