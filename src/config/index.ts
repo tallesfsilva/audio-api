@@ -15,7 +15,7 @@ const envSchema = z.object({
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional(),
   REDIS_DB: z.coerce.number().default(0),
-   REDIS_USERNAME: z.coerce.string().default("default"),
+  REDIS_USERNAME: z.coerce.string().default("default"),
 
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
@@ -39,7 +39,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(600),
 
-  CORS_ORIGIN: z.string().default('http://localhost:8080'),
+  CORS_ORIGIN: z.string(),
 
 
     // ── Stripe ──────────────────────────────────────────────────────────────────
