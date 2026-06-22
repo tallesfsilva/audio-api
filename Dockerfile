@@ -1,5 +1,6 @@
 # ─── Stage 1: deps ────────────────────────────────────────────────────────────
 FROM node:24-alpine AS deps
+
 WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
@@ -13,10 +14,11 @@ COPY package*.json ./
 COPY tsconfig.json ./
 RUN npm install
 
- 
+ COPY .env ./
 
 COPY prisma ./prisma
 RUN npx prisma generate
+
 COPY src ./src
 RUN npm run build
 
