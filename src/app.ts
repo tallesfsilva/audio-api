@@ -26,7 +26,6 @@ import { transcriptionsRouter } from './modules/transcription/transcriptions.rou
 
 export function createApp(): Application {
   const app = express();
- console.log(config.DATABASE_URL)
   // ── Security ──────────────────────────────────────────────────────────────
   app.use(helmet());
   app.use(
