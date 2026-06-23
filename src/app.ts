@@ -26,7 +26,7 @@ import { transcriptionsRouter } from './modules/transcription/transcriptions.rou
 
 export function createApp(): Application {
   const app = express();
-
+ console.log(config.DATABASE_URL)
   // ── Security ──────────────────────────────────────────────────────────────
   app.use(helmet());
   app.use(
@@ -37,7 +37,7 @@ export function createApp(): Application {
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Callback-Signature'],
     }),
   );
-
+ 
   // ── Rate limiting ─────────────────────────────────────────────────────────
   const limiter = rateLimit({
     windowMs: config.RATE_LIMIT_WINDOW_MS,
@@ -86,7 +86,7 @@ export function createApp(): Application {
   app.use(`${prefix}/users`,    usersRouter);
   app.use(`${prefix}/transcriptions`,    transcriptionsRouter);
   
-
+  app.set('trust proxy', 1);
   app.set("json replacer", (_key: string, value: unknown) => {
   return typeof value === "bigint"
     ? value.toString()

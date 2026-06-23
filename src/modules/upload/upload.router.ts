@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { uploadController } from './controller/upload.controller';
 import { authenticate } from '../../shared/guards/authenticate';
-import { uploadMiddleware } from '../../infrastructure/storage/multer';
+
 import { checkTranscriptionQuota } from '@/shared/middleware/checkTranscriptionQuota';
 
 const router = Router();
@@ -22,8 +22,15 @@ router.post(
   '/',
   authenticate,
   checkTranscriptionQuota,
-  uploadMiddleware.single('file'),
   (req, res) => uploadController.upload(req, res),
+);
+
+
+router.post(
+  '/sign-url',
+  authenticate,
+  checkTranscriptionQuota,
+  (req, res) => uploadController.signUrl(req, res),
 );
 
 export default router;

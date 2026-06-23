@@ -39,11 +39,11 @@ export const PLANS: Record<PlanTier, Plan> = {
     tier: 'PRO',
     name: 'Pro',
     priceMonthly: 2999,
-    monthlyQuotaMinutes: 3000,
+    monthlyQuotaMinutes: 1200,
     maxFileSizeMb: 500,
     maxConcurrentJobs: 10,
     models: ['tiny', 'base', 'small', 'medium', 'large', 'large-v2', 'large-v3'],
-    features: ['3000 min/month', 'Up to 500 MB files', 'All formats', 'large-v3 model', 'Speaker diarization', 'Priority queue'],
+    features: ['1200 min/month', 'All formats', 'large-v3 model', 'Priority queue'],
   },
   ENTERPRISE: {
     tier: 'ENTERPRISE',

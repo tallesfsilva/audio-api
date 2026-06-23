@@ -2,7 +2,9 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config();
+dotenv.config({
+  override: true,
+});
  
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -38,18 +40,20 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60000),
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(600),
-
+  GCS_UPLOAD_BUCKET: z.string(),
   CORS_ORIGIN: z.string(),
-
-
-    // ── Stripe ──────────────────────────────────────────────────────────────────
-    STRIPE_SECRET_KEY:      z.string().optional(),
-    STRIPE_WEBHOOK_SECRET:  z.string().optional(),
-    STRIPE_PRICE_STARTER:   z.string().optional().default("0"),
-    STRIPE_PRICE_PRO:       z.string().optional().default("price_1Tg7a7L77u6bWIKEWfrtbx5h"),
-    STRIPE_PRICE_ENTERPRISE: z.string().optional().default("79.00"),
-    STRIPE_SUCCESS_URL:     z.string().default('http://localhost:5173/billing?success=1'),
-    STRIPE_CANCEL_URL:      z.string().default('http://localhost:5173/billing?canceled=1'),
+  GCP_PROJECT_ID: z.string(),
+  GCP_CLIENT_EMAIL: z.string(),
+  GCP_PRIVATE_KEY: z.string(),
+  GCS_BUCKET: z.string(),
+  // ── Stripe ──────────────────────────────────────────────────────────────────
+  STRIPE_SECRET_KEY:      z.string().optional(),
+  STRIPE_WEBHOOK_SECRET:  z.string().optional(),
+  STRIPE_PRICE_STARTER:   z.string().optional().default("0"),
+  STRIPE_PRICE_PRO:       z.string().optional().default("price_1Tg7a7L77u6bWIKEWfrtbx5h"),
+  STRIPE_PRICE_ENTERPRISE: z.string().optional().default("79.00"),
+  STRIPE_SUCCESS_URL:     z.string().default('http://localhost:5173/billing?success=1'),
+  STRIPE_CANCEL_URL:      z.string().default('http://localhost:5173/billing?canceled=1'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -5,8 +5,9 @@ import { PlanTier } from '../../../shared/types/domain';
 import { PLANS } from '../../billing/service/billing.service';
 import {
   paymentsRepository,
-  SubscriptionStatus,
+ 
 } from '../repository/payments.repository';
+import { SubscriptionStatus } from '@prisma/client';
 import {
   getStripe,
   getPriceId,
@@ -19,20 +20,25 @@ import { CreateCheckoutDto, CreatePortalDto } from '../dto/payments.dto';
 import { prisma } from '@/infrastructure/database/client';
 
 // Maps Stripe subscription status strings → our SubscriptionStatus type
-function toSubscriptionStatus(stripeStatus: Stripe.Subscription.Status): SubscriptionStatus {
-  const map: Record<Stripe.Subscription.Status, SubscriptionStatus> = {
-    incomplete:         'INCOMPLETE',
+function toSubscriptionStatus(
+  stripeStatus: Stripe.Subscription['status']
+): SubscriptionStatus {
+  const map: Record<
+    Stripe.Subscription['status'],
+    SubscriptionStatus
+  > = {
+    incomplete: 'INCOMPLETE',
     incomplete_expired: 'INCOMPLETE_EXPIRED',
-    trialing:           'TRIALING',
-    active:             'ACTIVE',
-    past_due:           'PAST_DUE',
-    canceled:           'CANCELED',
-    unpaid:             'UNPAID',
-    paused:             'PAUSED',
+    trialing: 'TRIALING',
+    active: 'ACTIVE',
+    past_due: 'PAST_DUE',
+    canceled: 'CANCELED',
+    unpaid: 'UNPAID',
+    paused: 'PAUSED',
   };
+
   return map[stripeStatus] ?? 'INCOMPLETE';
 }
-
 // Reads the planTier stored in the Stripe Price metadata.
 // In your Stripe dashboard set metadata.planTier = STARTER / PRO / ENTERPRISE
 // on each Price object. Falls back to matching by price ID.
@@ -160,6 +166,57 @@ class PaymentsService {
     logger.info('customer.subscription.updated handled', { subscriptionId: subscription.id });
   }
 
+  async handleInvoicePaymentSucceeded(
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const subscriptionId =
+    typeof invoice.parent?.subscription_details?.subscription === 'string'
+      ? invoice.parent?.subscription_details?.subscription 
+      : invoice.parent?.subscription_details?.subscription.id 
+  if (!subscriptionId) return;
+  const stripe = getStripe();
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await this._syncSubscription(subscription);
+  const dbSubscription = await prisma.subscription.findUnique({
+    where: {
+      stripeSubscriptionId: subscriptionId,
+    },
+  });
+  if (!dbSubscription) {
+    logger.warn('Subscription not found', { subscriptionId });
+    return;
+  }
+  // Prevent duplicate processing
+  const existingPayment = await prisma.payment.findUnique({
+    where: {
+      stripeInvoiceId: invoice.id,
+    },
+  });
+  if (!existingPayment) {
+    await prisma.payment.create({
+      data: {
+        subscriptionId: dbSubscription.id,
+        stripeInvoiceId: invoice.id,
+        stripePaymentIntentId:
+          typeof invoice.payments?.data[0].payment.payment_intent === 'string'
+            ? invoice.payments?.data[0].payment.payment_intent
+            : invoice.payments?.data[0].id,
+        amountCents: invoice.amount_paid,
+        currency: invoice.currency,
+        status: 'SUCCEEDED',
+        paidAt: invoice.status_transitions?.paid_at
+          ? new Date(invoice.status_transitions.paid_at * 1000)
+          : new Date(),
+        stripeData: invoice as {}
+      },
+    });
+  }
+  logger.info('invoice.payment_succeeded handled', {
+    subscriptionId,
+    invoiceId: invoice.id,
+  });
+}
+
   async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
     const userId = subscription.metadata?.userId;
     if (!userId) {
@@ -238,9 +295,9 @@ async handleCheckoutSessionCompleted(
   const invoice = await stripe.invoices.retrieve(invoiceId);
 
   const paymentIntentId =
-    typeof invoice.payment_intent === 'string'
-      ? invoice.payment_intent
-      : invoice.payment_intent?.id;
+     typeof invoice.payments?.data[0].payment.payment_intent === 'string'
+            ? invoice.payments?.data[0].payment.payment_intent
+            : invoice.payments?.data[0].id;
 
   await prisma.payment.create({
     data: {
@@ -267,9 +324,9 @@ async handleCheckoutSessionCompleted(
 }
   async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     const subscriptionId =
-      typeof invoice.subscription === 'string'
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      typeof invoice.parent?.subscription_details?.subscription === 'string'
+      ? invoice.parent?.subscription_details?.subscription 
+      : invoice.parent?.subscription_details?.subscription.id 
 
     if (!subscriptionId) return;
 
@@ -280,6 +337,8 @@ async handleCheckoutSessionCompleted(
   // ── Private helpers ────────────────────────────────────────────────────────
 
   private async _syncSubscription(subscription: Stripe.Subscription): Promise<void> {
+    try{
+  
     const userId = subscription.metadata?.userId;
     if (!userId) {
       logger.warn('_syncSubscription: no userId in metadata', { id: subscription.id });
@@ -302,9 +361,9 @@ async handleCheckoutSessionCompleted(
       stripeProductId:      productId,
       planTier,
       status,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd:   new Date(subscription.current_period_end   * 1000),
-      cancelAtPeriodEnd:  subscription.cancel_at_period_end,
+      currentPeriodStart: new Date(item.current_period_start * 1000),
+      currentPeriodEnd:   new Date(item.current_period_end   * 1000),
+      cancelAtPeriodEnd:   Number(subscription.cancel_at) ? true : false,
       canceledAt:         subscription.canceled_at
         ? new Date(subscription.canceled_at * 1000)
         : null,
@@ -314,12 +373,17 @@ async handleCheckoutSessionCompleted(
     });
 
     // Sync user plan only when subscription is billable
-    if (['ACTIVE', 'TRIALING'].includes(status)) {
+  if (['ACTIVE', 'TRIALING', "CANCELLED"].includes(status)) {
       await paymentsRepository.updateUserPlan(
         userId,
         planTier,
         PLANS[planTier].monthlyQuotaMinutes,
       );
+    }
+
+  }catch(e){
+    console.log(e)
+
     }
   }
 }

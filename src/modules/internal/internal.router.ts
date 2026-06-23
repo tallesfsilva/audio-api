@@ -116,6 +116,7 @@ router.post('/jobs/:id/progress',  express.json({
 
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
+   limit: '50mb',
   verify: (req: Request, _res:Response, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   },

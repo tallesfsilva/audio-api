@@ -39,7 +39,7 @@ class PaymentsController {
     if (!signature || typeof signature !== 'string') {
       throw new AppError('Missing Stripe-Signature header', 400, 'MISSING_SIGNATURE');
     }
-
+     res.sendStatus(200);
     // req.body is the raw Buffer here (see router for the rawBody middleware)
     let event;
     try {
@@ -54,35 +54,37 @@ class PaymentsController {
     switch (event.type) {
       case 'checkout.session.completed':
         await paymentsService.handleCheckoutCompleted(
-          event.data.object as import('stripe').default.Checkout.Session,
+          event.data.object as import('stripe').Checkout.Session,
         );
            await paymentsService.handleCheckoutSessionCompleted(
-          event.data.object as import('stripe').default.Checkout.Session,
+          event.data.object as import('stripe').Checkout.Session,
         );
   
         break;
 
       case 'customer.subscription.updated':
         await paymentsService.handleSubscriptionUpdated(
-          event.data.object as import('stripe').default.Subscription,
+          event.data.object as import('stripe').Subscription,
         );
         break;
 
       case 'customer.subscription.deleted':
         await paymentsService.handleSubscriptionDeleted(
-          event.data.object as import('stripe').default.Subscription,
+          event.data.object as import('stripe').Subscription,
         );
         break;
 
       case 'invoice.payment_succeeded':
-     
+          await paymentsService.handleInvoicePaymentSucceeded(
+             event.data.object as import('stripe').Invoice,
+          )
         break;
 
       
 
       case 'invoice.payment_failed':
         await paymentsService.handleInvoicePaymentFailed(
-          event.data.object as import('stripe').default.Invoice,
+          event.data.object as import('stripe').Invoice,
         );
         break;
 
@@ -91,7 +93,7 @@ class PaymentsController {
     }
 
     // Always respond 200 so Stripe doesn't retry
-    res.json({ received: true });
+   
   }
 }
 

@@ -9,11 +9,10 @@ import { deleteFile } from '../../../infrastructure/storage/local.driver';
 import { logger } from '../../../shared/utils/logger';
  
 import { config } from '@/config';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  
+ import { Storage } from '@google-cloud/storage';
 
-
+const storage = new Storage();
 export function buildCreateTranscriptionInput(
   job: Job,
   result: TranscriptionResult
@@ -191,23 +190,19 @@ class JobsService {
      if(!url){
           throw new Error('Subtitle not found');
      }
-     const s3 = new S3Client({
-          region: config.AWS_REGION,
-            credentials: {
-              accessKeyId: config.AWS_ACCESS_KEY_ID,
-              secretAccessKey:config.AWS_SECRET_ACCESS_KEY,
-            },
-      });
- 
-  const command = new GetObjectCommand({
-    Bucket: config.AWS_S3_BUCKET,
-    Key: url,
-      ResponseContentDisposition: `attachment; filename="${url.split('/').pop()}"`,
-  });
 
-   return getSignedUrl(s3, command, {
-    expiresIn: 3600, // 1 hour
-  });
+     const bucket = storage.bucket(config.GCS_BUCKET);
+       const file = bucket.file(url as string);
+      
+
+      const [signedUrl] = await file.getSignedUrl({
+        version: "v4",
+        action: "read",
+        expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        responseDisposition: `attachment;`,
+      });
+
+      return signedUrl;
  
   }
 
