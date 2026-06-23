@@ -10,10 +10,6 @@ class UploadController {
   async upload(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
 
-    // if (!req.file) {
-    //   throw new ValidationError('No file provided. Send a multipart/form-data request with field "file".');
-    // }
-
     const params = UploadBodySchema.parse(req.body);
     const job = await uploadService.ingest(req.user.sub,params);
 

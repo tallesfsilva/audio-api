@@ -130,12 +130,20 @@ class PaymentsService {
         'NO_STRIPE_CUSTOMER',
       );
     }
-
+    
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: dto.returnUrl ?? config.STRIPE_CANCEL_URL,
+    }).catch((err: any) => {
+          console.error("Stripe Billing Portal error", {
+            type: err?.type,
+            message: err?.message,
+            code: err?.code,
+            statusCode: err?.statusCode,
+            requestId: err?.requestId,
     });
-
+    throw err; // rethrow if you want the request to fail
+  });
     logger.info('Portal session created', { userId });
     return { url: session.url };
   }
