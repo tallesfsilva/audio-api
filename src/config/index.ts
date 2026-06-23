@@ -2,7 +2,9 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config();
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
  
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
