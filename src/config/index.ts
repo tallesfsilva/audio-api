@@ -50,10 +50,10 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY:      z.string().optional(),
   STRIPE_WEBHOOK_SECRET:  z.string().optional(),
   STRIPE_PRICE_STARTER:   z.string().optional().default("0"),
-  STRIPE_PRICE_PRO:       z.string().optional().default("price_1Tg7a7L77u6bWIKEWfrtbx5h"),
+  STRIPE_PRICE_PRO:       z.string().optional(),
   STRIPE_PRICE_ENTERPRISE: z.string().optional().default("79.00"),
-  STRIPE_SUCCESS_URL:     z.string().default('http://localhost:5173/billing?success=1'),
-  STRIPE_CANCEL_URL:      z.string().default('http://localhost:5173/billing?canceled=1'),
+  STRIPE_SUCCESS_URL:     z.string().default('https://subcult.vercel.app/billing/billing?success=1'),
+  STRIPE_CANCEL_URL:      z.string().default('https://subcult.vercel.app/billing/billing?canceled=1'),
 });
 
 const parsed = envSchema.safeParse(process.env);
