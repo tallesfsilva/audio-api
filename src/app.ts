@@ -49,7 +49,7 @@ export function createApp(): Application {
 
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20,
+    max: 100,
     message: { success: false, code: 'RATE_LIMITED', message: 'Too many auth attempts' },
   });
 
@@ -85,7 +85,7 @@ export function createApp(): Application {
   app.use(`${prefix}/users`,    usersRouter);
   app.use(`${prefix}/transcriptions`,    transcriptionsRouter);
   
-  app.set('trust proxy', 1);
+  app.set('trust proxy', true);
   app.set("json replacer", (_key: string, value: unknown) => {
   return typeof value === "bigint"
     ? value.toString()
