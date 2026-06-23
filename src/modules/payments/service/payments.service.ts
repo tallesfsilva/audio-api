@@ -102,7 +102,16 @@ class PaymentsService {
       },
       metadata: { userId, planTier: dto.tier },
       allow_promotion_codes: true,
+    }).catch((err: any) => {
+          logger.error("Stripe Checkout error", {
+            type: err?.type,
+            message: err?.message,
+            code: err?.code,
+            statusCode: err?.statusCode,
+            requestId: err?.requestId,
     });
+    throw err; // rethrow if you want the request to fail
+  });
 
     if (!session.url) {
       throw new AppError('Failed to create Stripe checkout session', 500, 'STRIPE_ERROR');
