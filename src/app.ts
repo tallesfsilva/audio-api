@@ -85,7 +85,7 @@ export function createApp(): Application {
   app.use(`${prefix}/users`,    usersRouter);
   app.use(`${prefix}/transcriptions`,    transcriptionsRouter);
   
-  app.set('trust proxy', true);
+  app.set('trust proxy', 1);
   app.set("json replacer", (_key: string, value: unknown) => {
   return typeof value === "bigint"
     ? value.toString()
