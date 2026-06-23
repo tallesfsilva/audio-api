@@ -28,6 +28,8 @@ async function bootstrap(): Promise<void> {
     await ensureStorageDir();
   }
 
+  logger.info("Stripe Key", config.STRIPE_SECRET_KEY)
+
   // 3. BullMQ queue event listeners
   startQueueEventListeners();
   const PORT = config.PORT || 8080
