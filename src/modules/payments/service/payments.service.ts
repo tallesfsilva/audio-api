@@ -95,8 +95,8 @@ class PaymentsService {
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: config.STRIPE_SUCCESS_URL,
-      cancel_url: config.STRIPE_CANCEL_URL,
+      success_url: dto.successUrl ?? config.STRIPE_SUCCESS_URL,
+      cancel_url:  dto.cancelUrl  ?? config.STRIPE_CANCEL_URL,
       subscription_data: {
         metadata: { userId, planTier: dto.tier },
       },
