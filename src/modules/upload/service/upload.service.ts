@@ -14,7 +14,9 @@ import { authRepository } from '@/modules/auth/repository/auth.repository';
 
 import { Storage } from '@google-cloud/storage';
  
-const storage = new Storage();
+const storage = new Storage({
+  keyFilename: "/SECRET/SERVICE_ACCOUNT",
+});
 const BUCKET_NAME = config.GCS_UPLOAD_BUCKET as string;
 const SIGNED_URL_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 // One-time HMAC secret for callback verification between Node ↔ Python
@@ -156,9 +158,7 @@ async signUrl(userId: string, params: SignUrlRequestDto): Promise<SignUrlRespons
     const jobId = uuidv4();
     const objectName = `uploads/${userId}/${jobId}/${filename}`;
     const gcsPath = `gs://${BUCKET_NAME}/${objectName}`;
-    logger.info("objectName", objectName)
-    logger.info("BUCKET_NAME", BUCKET_NAME)
-    logger.info("gcsPath", gcsPath)
+ 
     const blob = storage.bucket(BUCKET_NAME).file(objectName);
 
     let uploadUrl: string;
