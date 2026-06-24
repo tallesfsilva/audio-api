@@ -156,6 +156,7 @@ async signUrl(userId: string, params: SignUrlRequestDto): Promise<SignUrlRespons
     const jobId = uuidv4();
     const objectName = `uploads/${userId}/${jobId}/${filename}`;
     const gcsPath = `gs://${BUCKET_NAME}/${objectName}`;
+    logger.info("objectName", objectName)
     logger.info("BUCKET_NAME", BUCKET_NAME)
     logger.info("gcsPath", gcsPath)
     const blob = storage.bucket(BUCKET_NAME).file(objectName);
