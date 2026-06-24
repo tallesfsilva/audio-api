@@ -29,7 +29,7 @@ router.post(
 router.post(
   '/sign-url',
   authenticate,
-  checkTranscriptionQuota,
+  // checkTranscriptionQuota,
   (req, res) => uploadController.signUrl(req, res),
 );
 
