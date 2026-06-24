@@ -8,6 +8,7 @@ export async function checkTranscriptionQuota(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
+    try {
   const userId = req.user?.sub; // adjust based on your auth middleware
   if (!userId) {
     res.status(401).json({ success: false, error: 'Unauthorized' });
@@ -105,5 +106,12 @@ export async function checkTranscriptionQuota(
     return;
   }
 
-  next();
+  return next();
+
+    } catch (err) {
+    console.error("❌ checkTranscriptionQuota failed:", err);
+    res.status(500).json({
+      error: "Internal middleware error"
+    });
+  }
 }
