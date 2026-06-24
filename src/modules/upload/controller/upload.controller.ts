@@ -4,6 +4,7 @@ import { uploadService } from '../service/upload.service';
 import { UploadBodySchema } from '../dto/upload.dto';
 import { respondCreated } from '../../../shared/utils/apiResponse';
 import { UnauthorizedError, ValidationError } from '../../../shared/errors';
+import { logger } from '@/shared/utils/logger';
  
  
 class UploadController {
@@ -31,10 +32,8 @@ async signUrl(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
 
       const { filename, contentType } = req.body;
+      logger.debug("body", req.body)
 
-      if (!req.body) {
-        throw new ValidationError('No file provided. Send a multipart/form-data request with field "file".');
-      }
         if (!filename || !contentType) {
           throw new ValidationError("filename and contentType are required");
     }
