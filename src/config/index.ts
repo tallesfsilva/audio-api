@@ -45,10 +45,10 @@ const envSchema = z.object({
   GCP_PRIVATE_KEY: z.string(),
   GCS_BUCKET: z.string(),
   // ── Stripe ──────────────────────────────────────────────────────────────────
-  STRIPE_SECRET_KEY:      z.string().optional(),
-  STRIPE_WEBHOOK_SECRET:  z.string().optional(),
+  STRIPE_SECRET_KEY:      z.string(),
+  STRIPE_WEBHOOK_SECRET:  z.string().default("whsec_kXdiiogYYo0ctP9cNIAhCnId6zW0YnwI"),
   STRIPE_PRICE_STARTER:   z.string().optional().default("0"),
-  STRIPE_PRICE_PRO:       z.string().optional(),
+  STRIPE_PRICE_PRO:       z.string().default("price_1TlXJnL0kkUgmPpMA34YdZji"),
   STRIPE_PRICE_ENTERPRISE: z.string().optional().default("79.00"),
   STRIPE_SUCCESS_URL:     z.string().default('https://subcult.vercel.app/billing/billing?success=1'),
   STRIPE_CANCEL_URL:      z.string().default('https://subcult.vercel.app/billing/billing?canceled=1'),
