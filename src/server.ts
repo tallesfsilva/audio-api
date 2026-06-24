@@ -38,7 +38,7 @@ async function bootstrap(): Promise<void> {
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.info(`✅  API listening on http://localhost:${config.PORT}${config.API_PREFIX}`);
   });
-
+  console.log("Stripe price", config.STRIPE_PRICE_PRO)
     // Socket.IO
   const io = initializeSocket(server);
 
