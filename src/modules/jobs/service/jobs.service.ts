@@ -12,7 +12,9 @@ import { config } from '@/config';
  
  import { Storage } from '@google-cloud/storage';
 
-const storage = new Storage();
+const storage = new Storage({
+  keyFilename: "/SECRET/SERVICE_ACCOUNT",
+});
 export function buildCreateTranscriptionInput(
   job: Job,
   result: TranscriptionResult
