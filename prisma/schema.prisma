@@ -255,6 +255,8 @@ model TranscriptionSegment {
 
   transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
 
+  searchVector    Unsupported("tsvector")? @map("search_vector")
+  
   words           TranscriptionWord[]
 
   @@index([transcriptionId])
@@ -279,9 +281,8 @@ model TranscriptionWord {
 
   @@index([segmentDbId])
 
- 
-}
 
+}
 model TranscriptQuote {
   id              String          @id @default(uuid()) @db.Uuid
 
@@ -301,3 +302,14 @@ model TranscriptQuote {
   @@index([transcriptionId])
  
 }
+
+ model SupportTicket {
+  id        String   @id @default(cuid())
+  subject   String
+  category  String
+  message   String
+  userId    String?
+  userEmail String?
+  status    String   @default("open") // open | in_progress | closed
+  createdAt DateTime @default(now())
+ }

@@ -20,6 +20,19 @@ export type JobStatus =
   | 'FAILED'
   | 'CANCELLED';
 
+  
+ 
+export interface SupportContactPayload {
+  subject: string;
+  category: string;
+  message: string;
+}
+ 
+export interface SupportContactResult {
+  ok: boolean;
+}
+ 
+
 export const JobStatus = {
   PENDING:    'PENDING',
   QUEUED:     'QUEUED',

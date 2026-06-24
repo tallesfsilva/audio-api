@@ -90,7 +90,7 @@ class PaymentsService {
     }
 
     const priceId = getPriceId(dto.tier as PlanTier);
-    console.log(config.STRIPE_SECRET_KEY)
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,

@@ -1,8 +1,8 @@
 // src/config/index.ts
- 
+
 import { z } from 'zod';
 
- 
+
  
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -44,6 +44,15 @@ const envSchema = z.object({
   GCP_CLIENT_EMAIL: z.string(),
   GCP_PRIVATE_KEY: z.string(),
   GCS_BUCKET: z.string(),
+
+  SMTP_HOST:z.string(),
+  SMTP_PORT:z.string(),
+  SMTP_SECURE: z.string(),
+  SMTP_USER:z.string(),
+  SMTP_PASS:z.string(),
+  SUPPORT_INBOX_EMAIL: z.string(),
+
+  
   // ── Stripe ──────────────────────────────────────────────────────────────────
   STRIPE_SECRET_KEY:      z.string(),
   STRIPE_WEBHOOK_SECRET:  z.string().default("whsec_kXdiiogYYo0ctP9cNIAhCnId6zW0YnwI"),

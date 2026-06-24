@@ -20,6 +20,7 @@ import usersRouter    from './modules/users/users.router';
 import internalRouter from './modules/internal/internal.router';
 import paymentsRouter from './modules/payments/payments.router';
 import adminRouter from './modules/admin/admin.router'
+import supportRouter from './modules/support/support.router'
 import { transcriptionsRouter } from './modules/transcription/transcriptions.routes';
 
    
@@ -52,7 +53,7 @@ export function createApp(): Application {
     max: 100,
     message: { success: false, code: 'RATE_LIMITED', message: 'Too many auth attempts' },
   });
-
+  
   // ── Logging ───────────────────────────────────────────────────────────────
   app.use(
     morgan('combined', {
@@ -83,6 +84,7 @@ export function createApp(): Application {
   app.use(`${prefix}/jobs`,     jobsRouter);
   app.use(`${prefix}/billing`,  billingRouter);
   app.use(`${prefix}/users`,    usersRouter);
+  app.use(`${prefix}/support`,    supportRouter);
   app.use(`${prefix}/transcriptions`,    transcriptionsRouter);
   
   app.set('trust proxy', 1);
