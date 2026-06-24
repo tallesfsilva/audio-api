@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../infrastructure/database/client';
 import { logger } from '../utils/logger';
-import { User } from '@prisma/client';
- 
- 
 
+ 
 
 export async function checkTranscriptionQuota(
   req: Request,
