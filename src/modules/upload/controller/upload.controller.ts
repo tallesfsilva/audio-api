@@ -32,10 +32,11 @@ async signUrl(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
 
       const { filename, contentType } = req.body;
-      logger.debug("body", req.body)
+      logger.debug("filename", filename)
+       logger.debug("contentType", contentType)
 
-        if (!filename || !contentType) {
-          throw new ValidationError("filename and contentType are required");
+      if (!filename || !contentType) {
+        throw new ValidationError("filename and contentType are required");
     }
     const result = await uploadService.signUrl(req.user.sub, { filename, contentType });
 
