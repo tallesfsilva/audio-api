@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../infrastructure/database/client';
 import { logger } from '../utils/logger';
+import { User } from '@prisma/client';
+ 
+ 
 
 
 export async function checkTranscriptionQuota(
@@ -10,55 +13,51 @@ export async function checkTranscriptionQuota(
 ): Promise<void> {
     try {
   const userId = req.user?.sub; // adjust based on your auth middleware
-  if (!userId) {
-    res.status(401).json({ success: false, error: 'Unauthorized' });
-    return;
-  }
+ 
+      if (!userId) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      subscription: {
-        include: {
-          payments: {
-            where: { status: 'SUCCEEDED' },
-            orderBy: { paidAt: 'desc' },
-            take: 5, // recent payments are enough to check current period
-          },
-        },
-      },
-    },
-  });
-
-  if (!user) {
-    res.status(401).json({ success: false, error: 'Unauthorized' });
-    return;
-  }
-
-  // FREE tier: simple quota check
-  if (user.planTier === 'FREE') {
-    if (user.usedMinutes >= user.monthlyQuota) {
-      res.status(403).json({
-        success: false,
-        error: 'Monthly quota exceeded. Upgrade your plan to continue.',
+      const user = await prisma.user.findUnique({
+          where: { id: userId }
       });
+
+    if (!user) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
-    next();
-    return;
+ 
+    if (user.planTier !== "PRO") {
+      if (user.usedMinutes >= user.monthlyQuota) {
+        res.status(403).json({ error: "Monthly quota exceeded" });
+        return;
+      }
+
+      return next();
+    }   
+    const subscription = await prisma.subscription.findUnique({
+          where: { userId: user.id },
+             include: {
+                payments: {
+                  where: { status: "SUCCEEDED" },
+                  orderBy: { paidAt: "desc" },
+                  take: 5,
+                },
+              },
+      });
+  
+     
+     if (!subscription) {
+          logger.warn('Paid plan tier without subscription record', { userId });
+          res.status(403).json({
+            success: false,
+            error: 'No active subscription found.',
+          });
+        return;
   }
 
-  // Paid tier: subscription must exist and be valid
-  const subscription = user.subscription;
-  if (!subscription) {
-    logger.warn('Paid plan tier without subscription record', { userId });
-    res.status(403).json({
-      success: false,
-      error: 'No active subscription found.',
-    });
-    return;
-  }
-
+ 
   const now = new Date();
   const periodStillValid = subscription.currentPeriodEnd > now;
 
@@ -106,7 +105,9 @@ export async function checkTranscriptionQuota(
     return;
   }
 
-  return next();
+
+    return next();
+
 
     } catch (err) {
     console.error("❌ checkTranscriptionQuota failed:", err);
