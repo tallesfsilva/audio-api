@@ -27,6 +27,11 @@ class JobsRepository {
     return prisma.job.findUnique({ where: { id } });
   }
 
+  async findJobAndUser(id: string): Promise<Job | null> {
+    return prisma.job.findUnique({ where: { id }, include: { user: true} });
+  }
+
+
   async findByIdAndUserId(id: string, userId: string): Promise<Job | null> {
     return prisma.job.findFirst({ where: { id, userId } });
   }

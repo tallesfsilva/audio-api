@@ -13,9 +13,65 @@ import { logger } from '../../shared/utils/logger';
 import express from 'express';
 import { getSocket } from '@/infrastructure/socket';
 
-
+import nodemailer, { Transporter } from "nodemailer";
+import { jobRepository } from '../jobs/repository/jobs.repository';
 const router = Router();
 
+let transporter: Transporter | null = null;
+
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+async function sendUserConfirmationEmail(params: {
+  to: string;
+  subject: string;
+  jobId: string;
+  filename: string;
+  resultText: string;
+}): Promise<void> {
+  const mailer = getTransporter();
+
+  await mailer.sendMail({
+    from: config.SUPPORT_INBOX_EMAIL,
+    to: params.to,
+    subject: params.subject ?? `Your transcription is ready (#${params.jobId})`,
+    text: [
+      `Your transcription job for "${params.filename}" is complete.`,
+      `Job ID: ${params.jobId}`,
+      '',
+      'Transcript:',
+      params.resultText,
+    ].join('\n'),
+    html: `
+      <p>Your transcription job for "<strong>${escapeHtml(params.filename)}</strong>" is complete.</p>
+      <p>Job ID: <code>${escapeHtml(params.jobId)}</code></p>
+      <p><strong>Transcript:</strong></p>
+      <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(params.resultText)}</pre>
+    `,
+  });
+}
+function getTransporter(): Transporter {
+  if (transporter) return transporter;
+
+  transporter = nodemailer.createTransport({
+    host: config.SMTP_HOST,
+    port: Number(config.SMTP_PORT ?? 587),
+    secure: false, 
+    auth: {
+      user: config.SMTP_USER,
+      pass: config.SMTP_PASS,
+    },
+  });
+
+  return transporter;
+}
 
 // Regenerate the same callback secret used in upload.service.ts
 const CALLBACK_SECRET = crypto
@@ -132,7 +188,18 @@ router.post('/jobs/:id/callback',  express.json({
     jobsService.applyCallbackResult(body.jobId, body).catch(err => {
           logger.error('Failed to apply callback result', { jobId: body.jobId, err });
       });
+      
+    const job = await jobRepository.findJobAndUser(body.jobId)
     
+
+    await sendUserConfirmationEmail({
+        to: job?.user?.email as string,
+        subject: "Your Transcription Job is Completed!",
+        jobId: body.jobId,
+        filename: job?.originalFileName as string,
+        resultText: job?.resultKey as string,
+
+    })
     const io = getSocket();
    
 

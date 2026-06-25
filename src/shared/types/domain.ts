@@ -147,6 +147,7 @@ export interface Job {
   charCount: number | null;
   createdAt: Date;
   updatedAt: Date;
+  user?: User;
 }
 
 export interface RefreshToken {
