@@ -7,6 +7,7 @@ import { config } from '../../../config';
 import nodemailer, { Transporter } from "nodemailer";
 
 import { supportTicketRepository } from '../repository/support.repository';
+import { NotFoundError, ValidationError } from '@/shared/errors';
 
 
 const ALLOWED_CATEGORIES = new Set([
@@ -16,7 +17,7 @@ const ALLOWED_CATEGORIES = new Set([
   "other",
 ]);
 
-
+const VALID_STATUSES = new Set(["open", "in_progress", "closed"]);
 function validatePayload(payload: Partial<SupportContactPayload>): string | null {
   if (!payload.subject || typeof payload.subject !== "string" || payload.subject.trim().length === 0) {
     return "subject is required";
@@ -163,7 +164,59 @@ class SupportService {
 
   return { ok: true };
 }
+
+/**
+   * Fetch a single ticket by ID. Enforces that the requesting user owns the
+   * ticket — if you need an admin override, pass an explicit flag rather than
+   * skipping this check globally.
+   */
+  async getTicketById(ticketId: string, context: { userId?: string }) {
+    const ticket = await supportTicketRepository.findById(ticketId);
+ 
+    if (!ticket) {
+      throw new NotFoundError(`Support ticket ${ticketId} not found`);
+    }
+ 
+    if (context.userId && ticket.userId && ticket.userId !== context.userId) {
+      // Same response as "not found" rather than 403 — avoids confirming
+      // to an attacker that a ticket ID exists but belongs to someone else.
+      throw new NotFoundError(`Support ticket ${ticketId} not found`);
+    }
+ 
+    return ticket;
+  }
+ 
+  /**
+   * List all tickets belonging to the authenticated user.
+   */
+  async listUserTickets(userId: string) {
+    if (!userId) {
+      throw new ValidationError("userId is required");
+    }
+    return supportTicketRepository.listByUser(userId);
+  }
+ 
+  /**
+   * Update ticket status. Assumed to be an admin/support-staff action —
+   * no ownership check against the requesting user. Add one if regular
+   * users should be able to e.g. close their own tickets.
+   */
+  async updateTicketStatus(ticketId: string, status: string) {
+    if (!VALID_STATUSES.has(status)) {
+      throw new ValidationError(
+        `status must be one of: ${[...VALID_STATUSES].join(", ")}`
+      );
+    }
+ 
+    const existing = await supportTicketRepository.findById(ticketId);
+    if (!existing) {
+      throw new NotFoundError(`Support ticket ${ticketId} not found`);
+    }
+ 
+    return supportTicketRepository.updateStatus(ticketId, status);
+  }
+
  
 }
 
-export const uploadService = new SupportService();
+export const supportService = new SupportService();

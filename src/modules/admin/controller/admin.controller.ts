@@ -28,7 +28,20 @@ class AdminController {
     const result = await adminService.getSubscriptions(page, limit, status);
     res.json(result);
   }
+ 
+  async listTickets(res: Response): Promise<void> {
+    try {
+ 
+    // const page = Number(req.query.page) || 1;
+    // const limit = Number(req.query.limit) || 20;
+ 
+      const tickets = await adminService.listTickets();
+         res.json(tickets);
+    } catch (err) {
+     
 
+    }
+  }
   async getRevenueStats(res: Response) {
     const result = await adminService.getRevenueStats();
     res.json(result);

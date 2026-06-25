@@ -1,7 +1,7 @@
 const RTF_TABLE: Record<string, number> = {
-  "large-v3": 2.42,
-  "large-v2": 2.42,
-  "medium":   1.94,
+  "large-v3": 0.76,
+  "large-v2": 0.76,
+  "medium":   0.50,
   "base":     0.34,
 };
 

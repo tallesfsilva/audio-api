@@ -21,6 +21,7 @@ export interface SupportTicketRepository {
   findById(id: string): Promise<SupportTicket | null>;
   updateStatus(id: string, status: string): Promise<SupportTicket>;
   listByUser(userId: string): Promise<SupportTicket[]>;
+  listTickets(): Promise<SupportTicket[]> ;
 }
 
 class PrismaSupportTicketRepository implements SupportTicketRepository {
@@ -46,7 +47,11 @@ class PrismaSupportTicketRepository implements SupportTicketRepository {
       data: { status },
     });
   }
-
+ async listTickets(): Promise<SupportTicket[]> {
+    return prisma.supportTicket.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
   async listByUser(userId: string): Promise<SupportTicket[]> {
     return prisma.supportTicket.findMany({
       where: { userId },

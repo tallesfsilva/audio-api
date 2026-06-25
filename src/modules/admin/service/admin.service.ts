@@ -1,6 +1,7 @@
 // src/modules/admin/service/admin.service.ts
 import { SubscriptionStatus } from "@/shared/types/domain";
 import { adminRepository } from "../repository/admin.repository";
+import { supportTicketRepository } from "@/modules/support/repository/support.repository";
 
 type Order = "newest" | "oldest";
 
@@ -22,6 +23,16 @@ class AdminService {
     return { data, total, page, limit };
   }
 
+
+   
+    /**
+     * List all tickets belonging to the authenticated user.
+     */
+    async listTickets() {
+      
+      return supportTicketRepository.listTickets();
+    }
+   
   async getRevenueStats() {
     const {
       activeSubscriptions,

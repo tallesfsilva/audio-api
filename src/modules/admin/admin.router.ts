@@ -12,5 +12,6 @@ router.get("/users", adminController.getUsers);
 router.get("/users/recent", adminController.getRecentUsers);
 router.get("/subscriptions", adminController.getSubscriptions);
 router.get("/revenue", adminController.getRevenueStats);
+router.get("/support/tickets", adminController.listTickets);
 
 export default router;
