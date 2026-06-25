@@ -43,17 +43,14 @@ async function sendUserConfirmationEmail(params: {
     to: params.to,
     subject: params.subject ?? `Your transcription is ready (#${params.jobId})`,
     text: [
-      `Your transcription job for "${params.filename}" is complete.`,
+      `Your transcription job for the file "${params.filename}" is complete.`,
       `Job ID: ${params.jobId}`,
-      '',
-      'Transcript:',
-      params.resultText,
+      ''
     ].join('\n'),
     html: `
       <p>Your transcription job for "<strong>${escapeHtml(params.filename)}</strong>" is complete.</p>
       <p>Job ID: <code>${escapeHtml(params.jobId)}</code></p>
       <p><strong>Transcript:</strong></p>
-      <pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(params.resultText)}</pre>
     `,
   });
 }
