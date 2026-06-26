@@ -232,6 +232,7 @@ model Transcription {
 
   segments        TranscriptionSegment[]
   quotes          TranscriptQuote[]
+  translation     TranslationSubtitles[]    
 
   @@index([jobId])
   @@index([userId])
@@ -256,7 +257,7 @@ model TranscriptionSegment {
   transcription   Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
 
   searchVector    Unsupported("tsvector")? @map("search_vector")
-  
+
   words           TranscriptionWord[]
 
   @@index([transcriptionId])
@@ -302,6 +303,20 @@ model TranscriptQuote {
   @@index([transcriptionId])
  
 }
+
+model TranslationSubtitles {
+      id        String   @id @default(cuid())
+      fileKey   String
+      transcription    Transcription @relation(fields: [transcriptionId], references: [id], onDelete: Cascade)
+      transcriptionId String          @db.Uuid
+      sourceLanguage String
+      targetLanguage  String
+      createdAt DateTime @default(now())
+      filename       String
+      translatedTranscript String     @db.Text
+
+      @@index([transcriptionId])
+  }
 
  model SupportTicket {
   id        String   @id @default(cuid())

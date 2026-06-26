@@ -1,5 +1,5 @@
 // src/modules/transcriptions/service/transcriptions.service.ts
-import { Transcription, TranscriptQuote } from '@prisma/client';
+import { Transcription, TranscriptQuote, TranslationSubtitles } from '@prisma/client';
 import { logger } from '../../../shared/utils/logger'; // adjust path to match your logger location
 import { NotFoundError, ForbiddenError } from '../../../shared/errors';
 import {
@@ -10,6 +10,8 @@ import {
   TranscriptionWithQuotes,
   SearchDialogueResult,
 } from '../repository/transcription.repository';
+import { buildSrt, translateAll, uploadToGcs } from '@/shared/utils/translate';
+
 
 class TranscriptionsService {
   async create(input: CreateTranscriptionInput): Promise<Transcription> {
@@ -48,6 +50,38 @@ class TranscriptionsService {
     this.assertFoundAndOwned(transcription, userId);
     return transcription as TranscriptionWithSegments;
   }
+
+  async translateTranscrption(id: string, userId: string, targetLanguage: string): Promise<TranslationSubtitles> {
+
+
+    const transcription = await transcriptionsRepository.findByIdWithSegment(id);
+
+    if(!transcription){
+      throw new Error("Transcription not found")
+    }
+   
+    const translatedSrt = await translateAll(transcription?.segments,targetLanguage, transcription?.language);
+     const transcript = translatedSrt
+      .sort((a, b) => a.segmentId - b.segmentId)
+      .map(segment => segment.translatedText.trim())
+      .join(" ");
+
+  
+    const srtContent = buildSrt(translatedSrt);
+    const url = await uploadToGcs(userId, transcription.filename, targetLanguage, srtContent);
+    
+    const translationPayload = {
+          fileKey: url,
+          transcriptionId: transcription.id,
+          sourceLanguage: transcription?.language as string,
+          targetLanguage: targetLanguage,
+          filename: transcription.filename,
+          translatedTranscript: transcript
+    }
+    const translatedSubtitle =  await transcriptionsRepository.createTranslatedSubtitles(translationPayload)
+    return translatedSubtitle;
+  }
+
 
   async getWithQuotes(id: string, userId: string): Promise<TranscriptionWithQuotes> {
     const transcription = await transcriptionsRepository.findByIdWithQuotes(id);

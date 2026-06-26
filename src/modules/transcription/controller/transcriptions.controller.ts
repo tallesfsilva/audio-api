@@ -47,6 +47,18 @@ class TranscriptionsController {
     respond(res, result);
   }
 
+
+    async translate(req: Request, res: Response): Promise<void> {
+    if (!req.user) throw new UnauthorizedError();
+    const {id:transcriptionId} = req.params
+    const {targetLanguage} = req.body
+
+
+    const result = await transcriptionsService.translateTranscrption(transcriptionId, req.user.sub, targetLanguage);
+    respond(res, result);
+  }
+
+
   async getQuotes(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
     const result = await transcriptionsService.getQuotes(req.params.id, req.user.sub);

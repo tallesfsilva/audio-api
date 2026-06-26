@@ -1,10 +1,15 @@
 // src/modules/transcriptions/repository/transcriptions.repository.ts
-import { Prisma, Transcription, TranscriptionSegment, TranscriptQuote } from '@prisma/client';
+import { Prisma, Transcription, TranscriptionSegment, TranscriptQuote, TranslationSubtitles } from '@prisma/client';
 import { prisma } from '../../../infrastructure/database/client';
 
 export type TranscriptionWithSegments = Prisma.TranscriptionGetPayload<{
   include: { segments: { include: { words: true } } };
 }>;
+
+export type TranscriptionWithSegmentsOnly = Prisma.TranscriptionGetPayload<{
+   include: { segments: true };
+}>;
+
 
 export type TranscriptionWithQuotes = Prisma.TranscriptionGetPayload<{
   include: { quotes: true };
@@ -23,6 +28,16 @@ export interface CreateSegmentInput {
   }>;
 }
 
+
+export interface CreateTranslationInput {
+  id: string;
+  fileKey: string;
+  transcriptionId: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  createdAt: Date;
+  filename: string;
+}
 export interface CreateTranscriptionInput {
   jobId: string;
   userId: string;
@@ -34,7 +49,14 @@ export interface CreateTranscriptionInput {
   transcript?: string;
   segments?: CreateSegmentInput[];
 }
-
+export interface CreateTranslateSubtitlesDTO {
+  fileKey: string;
+  transcriptionId: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  filename: string;
+  translatedTranscript: string;
+}
 export interface CreateQuoteInput {
   quote: string;
   startTime?: number;
@@ -103,7 +125,16 @@ class TranscriptionsRepository {
   async findByJobId(jobId: string): Promise<Transcription | null> {
     return prisma.transcription.findUnique({ where: { jobId } });
   }
-
+  async findByIdWithSegment(id: string): Promise<TranscriptionWithSegmentsOnly | null> {
+    return prisma.transcription.findUnique({
+      where: { id },
+      include: {
+        segments: {
+          orderBy: { segmentId: 'asc' },
+        },
+      },
+    });
+  }
   async findByIdWithSegments(id: string): Promise<TranscriptionWithSegments | null> {
     return prisma.transcription.findUnique({
       where: { id },
@@ -189,6 +220,14 @@ class TranscriptionsRepository {
       ),
     );
   }
+
+async createTranslatedSubtitles(
+  data: CreateTranslateSubtitlesDTO
+): Promise<TranslationSubtitles> {
+  return prisma.translationSubtitles.create({
+    data,
+  });
+}
 
   async findSegmentsByTranscriptionId(transcriptionId: string): Promise<TranscriptionSegment[]> {
     return prisma.transcriptionSegment.findMany({
