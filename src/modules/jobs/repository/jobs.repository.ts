@@ -105,6 +105,7 @@ class JobsRepository {
       charCount?: number;
       resultKey?: string;
       resultText?: string;
+      language: string;
       resultTextKey?: string;
       transcription?: string;
     },

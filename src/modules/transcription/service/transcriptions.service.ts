@@ -59,7 +59,7 @@ class TranscriptionsService {
     if(!transcription){
       throw new Error("Transcription not found")
     }
-   
+    
     const translatedSrt = await translateAll(transcription?.segments,targetLanguage, transcription?.language);
      const transcript = translatedSrt
       .sort((a, b) => a.segmentId - b.segmentId)
@@ -69,7 +69,7 @@ class TranscriptionsService {
   
     const srtContent = buildSrt(translatedSrt);
     const url = await uploadToGcs(userId, transcription.filename, targetLanguage, srtContent);
-    
+
     const translationPayload = {
           fileKey: url,
           transcriptionId: transcription.id,

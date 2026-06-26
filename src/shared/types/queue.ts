@@ -51,6 +51,7 @@ export interface TranscriptionResult {
   resultText?: string;       // first 500 chars preview
   errorMessage?: string;
   resultTextKey?: string;
+  language: TranscriptionLanguage;
   segments?: Segment[];
   transcription?: string;
 }

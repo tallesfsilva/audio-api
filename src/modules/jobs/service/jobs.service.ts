@@ -26,7 +26,7 @@ export function buildCreateTranscriptionInput(
 
     filename: job.originalFileName,
 
-    language: job.language,
+    language: result.language,
 
     durationSeconds:
       result.durationSeconds ??
@@ -137,6 +137,7 @@ class JobsService {
         durationSeconds: result.durationSeconds,
         wordCount: result.wordCount,
         charCount: result.charCount,
+        language: result.language,
         resultKey: result.resultKey,
         resultText: result.resultText,
         resultTextKey: result.resultTextKey,

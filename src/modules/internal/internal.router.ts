@@ -109,7 +109,19 @@ const WordSchema = z.object({
   end: z.number(),
   prob: z.number(),
 });
-
+export const TranscriptionLanguageSchema = z.enum([
+  "auto",
+  "en",
+  "es",
+  "fr",
+  "de",
+  "it",
+  "pt",
+  "ru",
+  "ja",
+  "ko",
+  "zh",
+]);
 const SegmentSchema = z.object({
   id: z.number(),
   start: z.number(),
@@ -120,7 +132,19 @@ const SegmentSchema = z.object({
 const ResultSchema = z.object({
   jobId: z.string().uuid(),
   success: z.boolean(),
-
+   language: z.enum([
+    "auto",
+    "en",
+    "es",
+    "fr",
+    "de",
+    "it",
+    "pt",
+    "ru",
+    "ja",
+    "ko",
+    "zh",
+  ]),
   durationSeconds: z.number().optional(),
   wordCount: z.number().int().optional(),
   charCount: z.number().int().optional(),
