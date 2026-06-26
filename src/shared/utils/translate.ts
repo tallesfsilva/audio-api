@@ -124,12 +124,31 @@ export function buildSrt(translated: TranslatedSegment[]): string {
 }
 
 export async function uploadToGcs(userId: string, fileName: string, targetLang: string, srtContent: string): Promise<string> {
-  const blobPath = `results/${userId}/translations/${fileName}.${targetLang}.srt`;
+
+
+  const parsedFilename = fileName.split(".")[0] ;
+  const blobPath = `results/${userId}/translations/${parsedFilename}.${targetLang}.srt`;
   const bucket = storage.bucket(BUCKET_NAME);
   await bucket.file(blobPath).save(srtContent, {
     contentType: "text/plain; charset=utf-8",
   });
-  return blobPath;
+
+
+
+ 
+    const file = bucket.file(blobPath as string);
+      
+
+    const [signedUrl] = await file.getSignedUrl({
+    version: "v4",
+    action: "read",
+    expires: Date.now() + 60 * 60 * 1000, // 1 hour
+    responseDisposition: `attachment;`,
+    });
+
+    return signedUrl;
+
+
 }
 export async function translateAll(
   segments: SegmentInput[],
