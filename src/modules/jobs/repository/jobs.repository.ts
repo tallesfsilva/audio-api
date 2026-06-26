@@ -1,6 +1,6 @@
 // src/modules/jobs/repository/jobs.repository.ts
 import { Prisma } from '@prisma/client';
-import {Job, JobStatus,} from '../../../shared/types/domain'
+import {Job, JobStatus, TranscriptionLanguage,} from '../../../shared/types/domain'
 import { prisma } from '../../../infrastructure/database/client';
 
 export interface JobsPage {
@@ -105,7 +105,7 @@ class JobsRepository {
       charCount?: number;
       resultKey?: string;
       resultText?: string;
-      language: string;
+      language: TranscriptionLanguage;
       resultTextKey?: string;
       transcription?: string;
     },

@@ -132,7 +132,7 @@ const SegmentSchema = z.object({
 const ResultSchema = z.object({
   jobId: z.string().uuid(),
   success: z.boolean(),
-   language: z.enum([
+  language: z.enum([
     "auto",
     "en",
     "es",
