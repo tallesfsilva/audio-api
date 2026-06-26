@@ -138,7 +138,7 @@ export async function translateAll(
 ): Promise<TranslatedSegment[]> {
   const batches = makeBatches(segments);
   const results: TranslatedSegment[] = [];
-  const total = segments.length;
+ 
   let done = 0;
 
   for (const batch of batches) {
