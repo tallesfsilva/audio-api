@@ -4,7 +4,7 @@ import { Storage } from "@google-cloud/storage";
 import { config } from "@/config";
 
 const translateClient = new Translate.Translate({
-  projectId: "substantial-mix-485814-v7 ",
+  projectId: "substantial-mix-485814-v7",
 });
 // const storage = new Storage();
 
@@ -32,8 +32,8 @@ interface TranslatedSegment {
 
 function makeBatches(
   segments: SegmentInput[],
-  maxChars = 4000, // Google Translate batches well; stay under request limits
-  maxItems = 100
+  maxChars = 15000, // Google Translate batches well; stay under request limits
+  maxItems = 300
 ): SegmentInput[][] {
   const batches: SegmentInput[][] = [];
   let current: SegmentInput[] = [];
