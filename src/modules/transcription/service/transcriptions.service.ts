@@ -11,6 +11,7 @@ import {
   SearchDialogueResult,
 } from '../repository/transcription.repository';
 import { buildSrt, translateAll, uploadToGcs } from '@/shared/utils/translate';
+import { TranslatationResult } from '@/shared/types/domain';
 
 
 class TranscriptionsService {
@@ -51,6 +52,24 @@ class TranscriptionsService {
     return transcription as TranscriptionWithSegments;
   }
 
+ async translateTranscrptionWorker(segments:any, sourceLanguage:string,  targetLanguage: string): Promise<TranslatationResult> {
+    
+ 
+    const translatedSrt = await translateAll(segments,targetLanguage, sourceLanguage);
+    const transcript = translatedSrt
+      .sort((a, b) => a.segmentId - b.segmentId)
+      .map(segment => segment.translatedText.trim())
+      .join(" ");
+  
+    const str = buildSrt(translatedSrt);
+
+    
+    return {str, transcript};
+  }
+
+
+
+
   async translateTranscrption(id: string, userId: string, targetLanguage: string): Promise<TranslationSubtitles> {
 
 
@@ -65,7 +84,6 @@ class TranscriptionsService {
       .sort((a, b) => a.segmentId - b.segmentId)
       .map(segment => segment.translatedText.trim())
       .join(" ");
-
   
     const srtContent = buildSrt(translatedSrt);
     const url = await uploadToGcs(userId, transcription.filename, targetLanguage, srtContent);
@@ -78,7 +96,9 @@ class TranscriptionsService {
           filename: transcription.filename,
           translatedTranscript: transcript
     }
-    const translatedSubtitle =  await transcriptionsRepository.createTranslatedSubtitles(translationPayload)
+    const translatedSubtitle =  await transcriptionsRepository.createTranslatedSubtitles(translationPayload);
+
+    
     return translatedSubtitle;
   }
 

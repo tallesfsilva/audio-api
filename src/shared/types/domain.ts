@@ -21,7 +21,12 @@ export type JobStatus =
   | 'CANCELLED';
 
   
- 
+export interface TranslatationResult {
+
+    str: string;
+    transcript: string;
+
+}
 export interface SupportContactPayload {
   subject: string;
   category: string;

@@ -15,6 +15,8 @@ import { getSocket } from '@/infrastructure/socket';
 
 import nodemailer, { Transporter } from "nodemailer";
 import { jobRepository } from '../jobs/repository/jobs.repository';
+import { transcriptionsService } from '../transcription/service/transcriptions.service';
+import { mapSegment } from '@/shared/utils/translate';
 const router = Router();
 
 let transporter: Transporter | null = null;
@@ -159,6 +161,16 @@ const ResultSchema = z.object({
   segments: z.array(SegmentSchema).optional(),
 });
 
+
+
+const TranslateSchema = z.object({
+  targetLanguage: z.string(),
+  jobId: z.string().uuid(),
+  sourceLanguage: z.string(),
+  segments: z.array(SegmentSchema).optional(),
+});
+
+
 /** POST /api/v1/internal/jobs/:id/progress */
 router.post('/jobs/:id/progress',  express.json({
   verify: (req: Request, _res, buf) => {
@@ -190,6 +202,27 @@ router.post('/jobs/:id/progress',  express.json({
   logger.debug('Progress update received', { jobId: body.jobId, progress: body.progress });
   respond(res, { received: true });
 });
+
+
+/** POST /api/v1/internal/jobs/:id/progress */
+router.post('/jobs/:id/translate',  express.json({
+  verify: (req: Request, _res, buf) => {
+    req.rawBody = buf; // Buffer of the exact bytes received
+  }
+}), async (req: Request, res: Response) => {
+  verifyCallbackSignature(req);
+  const body = TranslateSchema.parse(req.body);
+
+  if (body.jobId !== req.params.id) {
+    throw new ValidationError('jobId mismatch');
+  }
+  const segmentsMapped = mapSegment(body?.segments as []) 
+  const strTranslated = await transcriptionsService.translateTranscrptionWorker(segmentsMapped,body.sourceLanguage, body.targetLanguage)
+
+ 
+  respond(res, {strTranslated: strTranslated.str, transcript: strTranslated.transcript,  success: true });
+});
+
 
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({

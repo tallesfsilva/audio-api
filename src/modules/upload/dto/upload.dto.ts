@@ -12,6 +12,8 @@ export const UploadBodySchema = z.object({
 
   sizeBytes: z.number().int().positive(),
 
+  targetLanguage: z.string().optional(),
+
   durationSeconds: z.number().positive(),
 
   language: z.enum([

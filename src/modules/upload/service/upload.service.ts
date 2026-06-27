@@ -17,6 +17,8 @@ import { Storage } from '@google-cloud/storage';
 const storage = new Storage({
   keyFilename: "/SECRET/SERVICE_ACCOUNT",
 });
+
+
 const BUCKET_NAME = config.GCS_UPLOAD_BUCKET as string;
 const SIGNED_URL_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 // One-time HMAC secret for callback verification between Node ↔ Python
@@ -126,6 +128,7 @@ class UploadService {
       enableDiarization: params.enableDiarization,
       enableTimestamps: params.enableTimestamps,
       callbackUrl,
+      targetLanguage: params?.targetLanguage ? params.targetLanguage : "",
       callbackSecret: CALLBACK_SECRET,
       estimatedJobDurationSecs: estimatedJobDuration,
       estimatedJobDurationMin: estimatedLabel,

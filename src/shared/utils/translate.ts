@@ -109,6 +109,14 @@ function formatSrtTimestamp(seconds: number): string {
   const pad = (n: number, len = 2) => String(n).padStart(len, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)},${pad(millis, 3)}`;
 }
+export function mapSegment(segments: any[]) {
+  return segments.map((seg) => ({
+    segmentId: seg.id,
+    startTime: seg.start,
+    endTime: seg.end,
+    text: seg.text,
+  }));
+}
 
 export function buildSrt(translated: TranslatedSegment[]): string {
   return translated
@@ -132,18 +140,14 @@ export async function uploadToGcs(userId: string, fileName: string, targetLang: 
   await bucket.file(blobPath).save(srtContent, {
     contentType: "text/plain; charset=utf-8",
   });
-
-
-
  
-    const file = bucket.file(blobPath as string);
-      
-
+ const file = bucket.file(blobPath as string);
+        
     const [signedUrl] = await file.getSignedUrl({
-    version: "v4",
-    action: "read",
-    expires: Date.now() + 60 * 60 * 1000, // 1 hour
-    responseDisposition: `attachment;`,
+        version: "v4",
+        action: "read",
+        expires: Date.now() + 60 * 60 * 1000, // 1 hour
+        responseDisposition: `attachment;`,
     });
 
     return signedUrl;

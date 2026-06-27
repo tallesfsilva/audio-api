@@ -12,6 +12,7 @@ import { config } from '@/config';
  
  import { Storage } from '@google-cloud/storage';
 
+
 const storage = new Storage({
   keyFilename: "/SECRET/SERVICE_ACCOUNT",
 });
@@ -158,12 +159,6 @@ class JobsService {
           transcriptionInput
         );
 
-      // if(transcription && transcription.id){
-
-      //   await transcriptionsRepository.createSearchVector(transcription.id);
-
-
-      // }
 
     } else {
       await jobRepository.markAsFailed(jobId, result.errorMessage ?? 'Worker reported failure');

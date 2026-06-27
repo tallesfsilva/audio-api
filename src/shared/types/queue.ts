@@ -18,6 +18,7 @@ export interface TranscriptionJobData {
   fileKey: string;           // storage path or S3 key
   originalFileName: string;
   fileSizeBytes: number;
+  targetLanguage?: string;
 
   // Transcription params
   language: TranscriptionLanguage;
