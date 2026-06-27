@@ -45,40 +45,10 @@ class UploadService {
       throw new NotFoundError()
     }
 
-    // 2. Build storage key relative to base path
-    //    multer already saved the file; compute the relative key from basePath
-    // const ext = path.extname(file.originalname).toLowerCase();
-
-    // const generatedFileName = `${uuidv4()}${ext}`;
 
     const fileKey = params.objectName;
 
-    // const s3 = new S3Client({
-    //     region: config.AWS_REGION,
-    //       credentials: {
-    //         accessKeyId: config.AWS_ACCESS_KEY_ID,
-    //         secretAccessKey:config.AWS_SECRET_ACCESS_KEY,
-    //       },
-    // });
-    // const signedUrl = await getSignedUrl(
-    //           s3,
-    //           new GetObjectCommand({
-    //             Bucket: config.AWS_S3_BUCKET,
-    //             Key: fileKey,
-    //           }),
-    //           { expiresIn: 3600 }
-    //         );
-    //   await s3.send(
-    //     new PutObjectCommand({
-    //       Bucket: config.AWS_S3_BUCKET,
-    //       Key: fileKey,
-    //       Body: file.buffer,
-    //       ContentType: file.mimetype,
-    //       CacheControl: 'max-age=86400',
-    //       ContentDisposition: 'attachment',
-    //     }),
-    // )
-    // const audioDurationSeconds = await getAudioDuration(signedUrl);
+
 
     const estimatedJobDuration = estimateProcessingSeconds(
       params.durationSeconds,
@@ -86,13 +56,7 @@ class UploadService {
       params.enableDiarization,
     );
     const estimatedLabel = formatDuration(estimatedJobDuration);
-    // const fileMetadata = await s3.send(
-    //       new HeadObjectCommand({
-    //         Bucket: file.bucket,
-    //         Key: file.key,
-    //       }),
-    //     );
-    // 3. Create DB record (PENDING)
+  
     const jobId = params.jobId;
     const jobData: Prisma.JobCreateInput = {
       id: jobId,
