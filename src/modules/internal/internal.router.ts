@@ -21,7 +21,11 @@ const router = Router();
 
 let transporter: Transporter | null = null;
 
+import { Storage } from '@google-cloud/storage';
 
+const storage = new Storage({
+  keyFilename: "/SECRET/SERVICE_ACCOUNT",
+});
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
@@ -172,7 +176,7 @@ const ResultSchema = z.object({
 
   erroMessage: z.string().nullable().optional(),
 
-  segments: z.array(SegmentSchema).optional(),
+  transcriptionKey: z.string(),
 });
 
 
@@ -181,7 +185,7 @@ const TranslateSchema = z.object({
   targetLanguage: z.string(),
   jobId: z.string().uuid(),
   sourceLanguage: z.string(),
-  segments: z.array(SegmentSchema).optional(),
+  transcriptionKey: z.string()
 });
 
 
@@ -220,18 +224,22 @@ router.post('/jobs/:id/progress',  express.json({
 
 /** POST /api/v1/internal/jobs/:id/progress */
 router.post('/jobs/:id/translate',  express.json({
-  limit: '100mb',
   verify: (req: Request, _res, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   }
 }), async (req: Request, res: Response) => {
   verifyCallbackSignature(req);
-  const body = TranslateSchema.parse(req.body);
 
-  if (body.jobId !== req.params.id) {
-    throw new ValidationError('jobId mismatch');
-  }
-  const segmentsMapped = mapSegment(body?.segments as []) 
+    const body = TranslateSchema.parse(req.body);
+
+    if (body.jobId !== req.params.id) {
+      throw new ValidationError('jobId mismatch');
+    }
+
+  const [contents] = await storage.bucket(config.GCS_BUCKET).file(body.transcriptionKey).download();
+
+  const transcription = JSON.parse(contents.toString("utf8"));
+  const segmentsMapped = mapSegment(transcription.segments as []) 
   const strTranslated = await transcriptionsService.translateTranscrptionWorker(segmentsMapped,body.sourceLanguage, body.targetLanguage)
 
  
@@ -241,7 +249,6 @@ router.post('/jobs/:id/translate',  express.json({
 
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
-   limit: '100mb',
   verify: (req: Request, _res:Response, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   },

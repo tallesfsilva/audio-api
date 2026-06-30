@@ -13,6 +13,7 @@ import { config } from '@/config';
  import { Storage } from '@google-cloud/storage';
 
 
+
 const storage = new Storage({
   keyFilename: "/SECRET/SERVICE_ACCOUNT",
 });
@@ -21,6 +22,8 @@ export function buildCreateTranscriptionInput(
   result: TranscriptionResult
 ): CreateTranscriptionInput {
 
+
+  
   return {
     jobId: job.id,
     userId: job.userId,
@@ -113,12 +116,7 @@ class JobsService {
       );
     }
 
-    // Clean up storage files
-    await Promise.allSettled([
-      job.fileKey ? deleteFile(job.fileKey) : Promise.resolve(),
-      job.resultKey ? deleteFile(job.resultKey) : Promise.resolve(),
-    ]);
-
+  
     await jobRepository.delete(jobId);
   }
 
@@ -149,6 +147,12 @@ class JobsService {
         const minutes = result.durationSeconds / 60;
         await jobRepository.incrementUserMinutes(job.userId, minutes);
       }
+
+       const [contents] = await storage.bucket(config.GCS_BUCKET).file(result.transcriptionKey).download();
+        
+        const transcription = JSON.parse(contents.toString("utf8"));
+        result.segments = transcription.segments
+   
         const transcriptionInput =
           buildCreateTranscriptionInput(
             job,
@@ -158,6 +162,12 @@ class JobsService {
         await transcriptionsRepository.create(
           transcriptionInput
         );
+
+        const file = storage
+        .bucket(config.GCS_UPLOAD_BUCKET)
+        .file(result.transcriptionKey);
+
+         await file.delete()
 
 
     } else {
