@@ -33,7 +33,7 @@ interface TranslatedSegment {
 function makeBatches(
   segments: SegmentInput[],
   maxChars = 15000, // Google Translate batches well; stay under request limits
-  maxItems = 300
+  maxItems = 100
 ): SegmentInput[][] {
   const batches: SegmentInput[][] = [];
   let current: SegmentInput[] = [];
