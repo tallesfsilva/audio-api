@@ -5,7 +5,7 @@ import { transcriptionQueue } from '../../../queue/producers/transcription.produ
 import { CreateTranscriptionInput, transcriptionsRepository } from '@/modules/transcription/repository/transcription.repository';
 import { NotFoundError, AppError } from '../../../shared/errors';
 import { TranscriptionResult } from '../../../shared/types/queue';
-import { deleteFile } from '../../../infrastructure/storage/local.driver';
+
 import { logger } from '../../../shared/utils/logger';
  
 import { config } from '@/config';

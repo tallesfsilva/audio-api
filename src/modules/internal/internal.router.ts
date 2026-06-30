@@ -109,12 +109,12 @@ const ProgressSchema = z.object({
   progress: z.number().int().min(0).max(100),
   message: z.string().optional(),
 });
-const WordSchema = z.object({
-  word: z.string(),
-  start: z.number(),
-  end: z.number(),
-  prob: z.number(),
-});
+// const WordSchema = z.object({
+//   word: z.string(),
+//   start: z.number(),
+//   end: z.number(),
+//   prob: z.number(),
+// });
 export const TranscriptionLanguageSchema = z.enum([
   "auto",
   "en",
@@ -128,13 +128,13 @@ export const TranscriptionLanguageSchema = z.enum([
   "ko",
   "zh",
 ]);
-const SegmentSchema = z.object({
-  id: z.number(),
-  start: z.number(),
-  end: z.number(),
-  text: z.string(),
-  words: z.array(WordSchema).optional(),
-});
+// const SegmentSchema = z.object({
+//   id: z.number(),
+//   start: z.number(),
+//   end: z.number(),
+//   text: z.string(),
+//   words: z.array(WordSchema).optional(),
+// });
 const ResultSchema = z.object({
   jobId: z.string().uuid(),
   success: z.boolean(),
