@@ -227,12 +227,16 @@ router.post('/jobs/:id/translate',  express.json({
   verify: (req: Request, _res, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   }
-}), async (req: Request, res: Response) => {
+}), async (req: Request, res: Response,  next: NextFunction) => {
+  try{
+
+
+
   verifyCallbackSignature(req);
 
-    const body = TranslateSchema.parse(req.body);
+  const body = TranslateSchema.parse(req.body);
 
-    if (body.jobId !== req.params.id) {
+  if (body.jobId !== req.params.id) {
       throw new ValidationError('jobId mismatch');
     }
 
@@ -244,11 +248,16 @@ router.post('/jobs/:id/translate',  express.json({
 
  
   respond(res, {strTranslated: strTranslated.str, transcript: strTranslated.transcript,  success: true });
+    }catch(e){
+      console.error("Error parsing: ", e)
+      next(new ValidationError('Error Parsing'));
+    }
 });
 
 
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
+  limit: '5mb',
   verify: (req: Request, _res:Response, buf) => {
     req.rawBody = buf; // Buffer of the exact bytes received
   },

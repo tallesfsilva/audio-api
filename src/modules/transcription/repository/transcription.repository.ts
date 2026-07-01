@@ -79,8 +79,13 @@ class TranscriptionsRepository {
    * Note: search_vector population for segments is expected to be handled
    * by a DB trigger (e.g. tsvector_update_trigger) — not set here.
    */
-  async create(input: CreateTranscriptionInput): Promise<Transcription> {
-    return prisma.transcription.create({
+ async create(input: CreateTranscriptionInput): Promise<Transcription> {
+  const SEGMENT_BATCH_SIZE = 500;
+  const WORD_BATCH_SIZE = 2000;
+
+  return prisma.$transaction(async (tx) => {
+    // Create transcription
+    const transcription = await tx.transcription.create({
       data: {
         jobId: input.jobId,
         userId: input.userId,
@@ -90,34 +95,67 @@ class TranscriptionsRepository {
         wordCount: input.wordCount ?? 0,
         charCount: input.charCount ?? 0,
         transcript: input.transcript,
-        ...(input.segments?.length
-          ? {
-              segments: {
-                create: input.segments.map((segment) => ({
-                  segmentId: segment.segmentId,
-                  startTime: segment.startTime,
-                  endTime: segment.endTime,
-                  text: segment.text,
-                  ...(segment.words?.length
-                    ? {
-                        words: {
-                          create: segment.words.map((word) => ({
-                            word: word.word,
-                            startTime: word.startTime,
-                            endTime: word.endTime,
-                            probability: word.probability,
-                          })),
-                        },
-                      }
-                    : {}),
-                })),
-              },
-            }
-          : {}),
       },
     });
-  }
 
+    if (!input.segments?.length) {
+      return transcription;
+    }
+
+    // Map original segmentId -> database id
+    const segmentMap = new Map<number, bigint>();
+
+    // Insert segments in batches
+    for (let i = 0; i < input.segments.length; i += SEGMENT_BATCH_SIZE) {
+      const batch = input.segments.slice(i, i + SEGMENT_BATCH_SIZE);
+
+      const createdSegments =
+        await tx.transcriptionSegment.createManyAndReturn({
+          data: batch.map((segment) => ({
+            transcriptionId: transcription.id,
+            segmentId: segment.segmentId,
+            startTime: segment.startTime,
+            endTime: segment.endTime,
+            text: segment.text,
+          })),
+          select: {
+            id: true,
+            segmentId: true,
+          },
+        });
+
+      for (const segment of createdSegments) {
+        segmentMap.set(segment.segmentId, segment.id);
+      }
+    }
+
+    // Flatten words
+    const words = input.segments.flatMap((segment) => {
+      const segmentDbId = segmentMap.get(segment.segmentId);
+
+      if (!segmentDbId || !segment.words?.length) {
+        return [];
+      }
+
+      return segment.words.map((word) => ({
+        segmentDbId,
+        word: word.word,
+        startTime: word.startTime,
+        endTime: word.endTime,
+        probability: word.probability,
+      }));
+    });
+
+    // Insert words in batches
+    for (let i = 0; i < words.length; i += WORD_BATCH_SIZE) {
+      await tx.transcriptionWord.createMany({
+        data: words.slice(i, i + WORD_BATCH_SIZE),
+      });
+    }
+
+    return transcription;
+  });
+}
   async findById(id: string): Promise<Transcription | null> {
     return prisma.transcription.findUnique({ where: { id } });
   }
