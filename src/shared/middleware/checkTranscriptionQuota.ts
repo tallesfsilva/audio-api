@@ -2,7 +2,35 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../infrastructure/database/client';
 import { logger } from '../utils/logger';
 
- 
+ import { Storage } from '@google-cloud/storage';
+import { config } from '@/config';
+  
+ const storage = new Storage({
+   keyFilename: "/SECRET/SERVICE_ACCOUNT",
+ });
+//  const storage = new Storage();
+
+
+ async function rejectAndCleanup(
+  res: Response,
+  objectName: string | undefined,
+  userId: string,
+  statusCode: number,
+  errorPayload: Record<string, unknown>,
+): Promise<void> {
+  if (objectName) {
+    try {
+      await storage.bucket(config.GCS_BUCKET).file(objectName).delete();
+    } catch (delErr) {
+      logger.error("Failed to delete file after quota rejection", {
+        userId,
+        fileName: objectName,
+        error: delErr,
+      });
+    }
+  }
+  res.status(statusCode).json(errorPayload);
+}
 
 export async function checkTranscriptionQuota(
   req: Request,
@@ -10,12 +38,13 @@ export async function checkTranscriptionQuota(
   next: NextFunction,
 ): Promise<void> {
     try {
-  const userId = req.user?.sub; // adjust based on your auth middleware
- 
+  const userId = req.user?.sub; 
+
       if (!userId) {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
+
 
       const user = await prisma.user.findUnique({
           where: { id: userId }
@@ -25,10 +54,34 @@ export async function checkTranscriptionQuota(
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }
- 
+
+   
+    const newJobMinutes = Number(req.body.durationSeconds) / 60; 
+      const activeReservation = await prisma.job.aggregate({
+      where: {
+        userId: user.id,
+        status: { in: ["QUEUED", "PROCESSING"] },
+      },
+      _sum: { durationSeconds: true },
+    });
+
+    const reservedMinutes = (activeReservation._sum.durationSeconds ?? 0) / 60;
+    const committed = user.usedMinutes + reservedMinutes;
+
+    if (committed + newJobMinutes >= user.monthlyQuota) {
+       await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "Monthly quota exceeded!! Please upgrade your plan!",
+      });
+          return;
+    }
+
     if (user.planTier !== "PRO") {
       if (user.usedMinutes >= user.monthlyQuota) {
-        res.status(403).json({ error: "Monthly quota exceeded" });
+        
+         await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "Monthly quota exceeded!! Please upgrade your plan!",
+      });
+          return;
         return;
       }
 
@@ -48,10 +101,10 @@ export async function checkTranscriptionQuota(
      
      if (!subscription) {
           logger.warn('Paid plan tier without subscription record', { userId });
-          res.status(403).json({
-            success: false,
-            error: 'No active subscription found.',
-          });
+           await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "No active subscription found!",
+      });
+         
         return;
   }
 
@@ -66,10 +119,10 @@ export async function checkTranscriptionQuota(
     periodStillValid;
 
   if (!isActive && !isCanceledButGraced) {
-    res.status(403).json({
-      success: false,
-      error: 'Your subscription is not active. Please renew to continue.',
-    });
+      await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "Your subscription is not active. Please renew to continue.",
+      });
+    
     return;
   }
 
@@ -87,19 +140,19 @@ export async function checkTranscriptionQuota(
       userId,
       subscriptionId: subscription.id,
     });
-    res.status(403).json({
-      success: false,
-      error: 'No valid payment found for the current billing period.',
-    });
+     await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "No valid payment found for the current billing period.",
+      });
+  
     return;
   }
 
   // Quota check still applies, even on paid tiers
   if (user.usedMinutes >= user.monthlyQuota) {
-    res.status(403).json({
-      success: false,
-      error: 'Monthly quota exceeded.',
-    });
+    
+     await rejectAndCleanup(res, req.body.objectName, user.id, 403, {
+        error: "Monthly quota exceeded!! Please upgrade your plan!",
+      });
     return;
   }
 

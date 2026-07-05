@@ -17,7 +17,7 @@ import { Storage } from '@google-cloud/storage';
 const storage = new Storage({
   keyFilename: "/SECRET/SERVICE_ACCOUNT",
 });
-
+// const storage = new Storage();
 
 const BUCKET_NAME = config.GCS_UPLOAD_BUCKET as string;
 const SIGNED_URL_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
@@ -63,6 +63,7 @@ class UploadService {
       user: { connect: { id: userId } },
       originalFileName: params.filename,
       fileKey,
+      durationSeconds: params.durationSeconds,
       fileSizeBytes:  params.sizeBytes?.toString() ?? "",
       language: params.language as Prisma.EnumTranscriptionLanguageFieldUpdateOperationsInput['set'],
       outputFormat: params.outputFormat as Prisma.EnumOutputFormatFieldUpdateOperationsInput['set'],
