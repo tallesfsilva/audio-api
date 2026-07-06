@@ -2,6 +2,8 @@
 import { Router } from 'express';
 import { authController } from './controller/auth.controller';
 import { authenticate } from '../../shared/guards/authenticate';
+import { NextFunction, Request, Response } from 'express';
+
 
 const router = Router();
 
@@ -22,5 +24,10 @@ router.post('/logout-all', authenticate, (req, res) => authController.logoutAll(
 
 /** GET /api/v1/auth/me  (requires auth) */
 router.get('/me', authenticate, (req, res) => authController.me(req, res));
+ 
+router.get('/verify',  (req:Request, res:Response, next: NextFunction) => authController.verify(req, res, next));
+
+router.post('/resend-verification', authController.resendVerification);
+
 
 export default router;

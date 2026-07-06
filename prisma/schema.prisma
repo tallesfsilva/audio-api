@@ -163,13 +163,24 @@ model User {
   stripeCustomerId String?       @unique
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
-
+  deviceId         String        @default("")
+  isVerified        Boolean      @default(false)
+  verificationToken VerificationToken?
   jobs             Job[]
   refreshTokens    RefreshToken[]
   subscription     Subscription?
   role  UserRole  @default(USER)
   @@index([email])
   @@index([stripeCustomerId])
+}
+
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Job {
@@ -199,6 +210,7 @@ model Job {
   progress         Int                   @default(0)
 
   resultKey        String?
+  resultAssKey     String?
   resultText       String?
   resultTextKey    String?
   wordCount        Int?

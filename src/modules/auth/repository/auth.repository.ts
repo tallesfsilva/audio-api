@@ -21,6 +21,13 @@ class AuthRepository {
     });
   }
 
+async markVerified(id: string): Promise<User> {
+    return prisma.user.update({
+      where: { id },
+      data: { isVerified: true },
+    });
+  }
+
   async findRefreshToken(token: string): Promise<(RefreshToken & { user: User }) | null> {
     return prisma.refreshToken.findUnique({
       where: { token },

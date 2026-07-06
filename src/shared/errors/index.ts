@@ -12,7 +12,19 @@ export class AppError extends Error {
     Error.captureStackTrace(this);
   }
 }
+ 
 
+export class InvalidTokenError extends AppError {
+  constructor(message = 'Invalid or already-used token') {
+    super(message, 400, "Invalid or already-used token'");
+  }
+}
+
+export class TokenExpiredError extends AppError {
+  constructor(message = 'Token expired. Please request a new one.') {
+    super(message, 400, "Token expired. Please request a new one.");
+  }
+}
 export class ValidationError extends AppError {
   constructor(message: string, public readonly details?: unknown) {
     super(message, 422, 'VALIDATION_ERROR');
@@ -37,9 +49,22 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+
+export class AccountActivationPending extends AppError {
+  constructor(message = 'Unauthorized') {
+    super(message, 403, 'Please activate your account first!!');
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden') {
     super(message, 403, 'FORBIDDEN');
+  }
+}
+
+export class InvalidEmailError extends AppError {
+  constructor(message = 'Invalid email format') {
+    super(message, 400, 'INVALID_EMAIL');
   }
 }
 
