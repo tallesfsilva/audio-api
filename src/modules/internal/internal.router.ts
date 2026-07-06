@@ -120,29 +120,10 @@ ${escapeHtml(params.jobId)}
 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:36px auto;">
 <tr>
 <td align="center" bgcolor="#6D28D9" style="border-radius:8px;">
-<a
-href="${params.resultKey}"
-style="
-display:inline-block;
-padding:16px 34px;
-font-size:16px;
-font-weight:600;
-color:#ffffff;
-text-decoration:none;
-">
-⬇ Download Subtitle (.srt)
-</a>
 </td>
 </tr>
 </table>
 
-<p style="margin:32px 0 12px;font-size:14px;color:#6b7280;">
-If the button doesn't work, copy and paste this link into your browser:
-</p>
-
-<p style="margin:0;word-break:break-all;font-size:14px;">
-<a href="${params.resultKey}" style="color:#2563eb;text-decoration:none;">
-${params.resultKey}
 </a>
 </p>
 
