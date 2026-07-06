@@ -40,7 +40,7 @@ async function sendUserConfirmationEmail(params: {
   subject: string;
   jobId: string;
   filename: string;
-  resultText: string;
+  resultKey: string;
 }): Promise<void> {
   const mailer = getTransporter();
 
@@ -48,16 +48,132 @@ async function sendUserConfirmationEmail(params: {
     from: config.SUPPORT_INBOX_EMAIL,
     to: params.to,
     subject: params.subject ?? `Your transcription is ready (#${params.jobId})`,
-    text: [
-      `Your transcription job for the file "${params.filename}" is complete.`,
-      `Job ID: ${params.jobId}`,
-      ''
-    ].join('\n'),
-    html: `
-      <p>Your transcription job for "<strong>${escapeHtml(params.filename)}</strong>" is complete.</p>
-      <p>Job ID: <code>${escapeHtml(params.jobId)}</code></p>
-      <p><strong>Transcript:</strong></p>
-    `,
+   text: [
+  `Your transcription is ready!`,
+  ``,
+  `File: ${params.filename}`,
+  `Job ID: ${params.jobId}`,
+  ``,
+  `Download your subtitles:`,
+  `${params.resultKey}`,
+].join("\n"),
+html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your transcription is ready</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111827;">
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f4f7;padding:40px 20px;">
+<tr>
+<td align="center">
+
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+
+<tr>
+<td style="background:#111827;padding:32px;text-align:center;">
+<h1 style="margin:0;color:#ffffff;font-size:30px;font-weight:700;">
+🎬 Subcult
+</h1>
+</td>
+</tr>
+
+<tr>
+<td style="padding:48px 40px;">
+
+<h2 style="margin:0 0 20px;font-size:28px;font-weight:700;color:#111827;">
+Your transcription is ready!
+</h2>
+
+<p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#4b5563;">
+Good news! We've finished processing your video and your subtitles are ready to download.
+</p>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:32px 0;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+<tr>
+<td style="padding:20px;">
+
+<p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">
+FILE
+</p>
+
+<p style="margin:0 0 20px;font-size:16px;color:#111827;">
+<strong>${escapeHtml(params.filename)}</strong>
+</p>
+
+<p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;">
+JOB ID
+</p>
+
+<p style="margin:0;font-family:monospace;font-size:14px;color:#374151;">
+${escapeHtml(params.jobId)}
+</p>
+
+</td>
+</tr>
+</table>
+
+<table role="presentation" cellspacing="0" cellpadding="0" style="margin:36px auto;">
+<tr>
+<td align="center" bgcolor="#6D28D9" style="border-radius:8px;">
+<a
+href="${params.resultKey}"
+style="
+display:inline-block;
+padding:16px 34px;
+font-size:16px;
+font-weight:600;
+color:#ffffff;
+text-decoration:none;
+">
+⬇ Download Subtitle (.srt)
+</a>
+</td>
+</tr>
+</table>
+
+<p style="margin:32px 0 12px;font-size:14px;color:#6b7280;">
+If the button doesn't work, copy and paste this link into your browser:
+</p>
+
+<p style="margin:0;word-break:break-all;font-size:14px;">
+<a href="${params.resultKey}" style="color:#2563eb;text-decoration:none;">
+${params.resultKey}
+</a>
+</p>
+
+<hr style="margin:40px 0;border:none;border-top:1px solid #e5e7eb;">
+
+<p style="margin:0;font-size:14px;line-height:1.7;color:#6b7280;">
+Thank you for using <strong>Subcult</strong>. We hope your subtitles help bring your content to a wider audience.
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="background:#f9fafb;padding:24px;text-align:center;border-top:1px solid #e5e7eb;">
+
+<p style="margin:0;font-size:13px;color:#9ca3af;">
+© ${new Date().getFullYear()} Subcult. All rights reserved.
+</p>
+
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`,
   });
 }
 function getTransporter(): Transporter {
@@ -115,6 +231,7 @@ const ProgressSchema = z.object({
 //   end: z.number(),
 //   prob: z.number(),
 // });
+
 export const TranscriptionLanguageSchema = z.enum([
   "auto",
   "en",
@@ -177,8 +294,10 @@ const ResultSchema = z.object({
   erroMessage: z.string().nullable().optional(),
 
   transcriptionKey: z.string(),
+  // resultAssKey: z.string(),
 });
 
+ 
 
 
 const TranslateSchema = z.object({
@@ -256,6 +375,59 @@ router.post('/jobs/:id/translate',  express.json({
 
 
 /** POST /api/v1/internal/jobs/:id/callback */
+// router.post('/jobs/:id/callback-v2',  express.json({
+//   limit: '5mb',
+//   verify: (req: Request, _res:Response, buf) => {
+//     req.rawBody = buf; // Buffer of the exact bytes received
+//   },
+// }), async (req: Request, res: Response, next: NextFunction) => {
+//   try{
+//     verifyCallbackSignature(req);
+//     const body = ResultSchema.parse(req.body);
+
+//     if (body.jobId !== req.params.id) {
+//       throw new ValidationError('jobId mismatch');
+//     }
+//     respond(res, { received: true });
+//     jobsService.applyCallbackResult(body.jobId, body).catch(err => {
+//           logger.error('Failed to apply callback result', { jobId: body.jobId, err });
+//       });
+      
+//     const job = await jobRepository.findJobAndUser(body.jobId)
+    
+
+//     await sendUserConfirmationEmail({
+//         to: job?.user?.email as string,
+//         subject: "Your Transcription Job is Completed!",
+//         jobId: body.jobId,
+//         filename: job?.originalFileName as string,
+//         resultKey: job?.resultKey as string,
+
+//     })
+//     const io = getSocket();
+   
+
+//     if(io){
+//        io.to(`job:${body.jobId}`).emit("job:update", {
+//       jobId: body.jobId,
+//       status: "done",
+//   });
+//   }
+
+//     logger.info('Job callback received', { jobId: body.jobId, success: body.success });
+    
+//   }catch(e){
+//       console.error("Error parsing: ", e)
+//       next(new ValidationError('Error Parsing'));
+//   }
+  
+// });
+
+
+
+
+
+/** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
   limit: '5mb',
   verify: (req: Request, _res:Response, buf) => {
@@ -282,7 +454,7 @@ router.post('/jobs/:id/callback',  express.json({
         subject: "Your Transcription Job is Completed!",
         jobId: body.jobId,
         filename: job?.originalFileName as string,
-        resultText: job?.resultKey as string,
+        resultKey: job?.resultKey as string,
 
     })
     const io = getSocket();
