@@ -70,7 +70,7 @@ class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
   
     const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 1000); // 24h
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const user = await authRepository.createUser({
       email: dto.email,
       name: dto.name,
@@ -102,7 +102,7 @@ class AuthService {
     const record = await verificationToken.findByToken(token);
 
     if (!record) {
-      throw new InvalidTokenError();
+        throw new InvalidTokenError();
     }
 
     if (record.expiresAt < new Date()) {
