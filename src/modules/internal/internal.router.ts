@@ -454,7 +454,7 @@ router.post('/jobs/:id/callback',  express.json({
         subject: "Your Transcription Job is Completed!",
         jobId: body.jobId,
         filename: job?.originalFileName as string,
-        resultKey: job?.resultKey as string,
+        resultKey: body?.resultKey as string,
 
     })
     const io = getSocket();
