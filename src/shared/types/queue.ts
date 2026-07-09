@@ -79,6 +79,7 @@ export interface TranscriptionResult {
   segments?: Segment[];
   transcription?: string;
   transcriptionKey: string;
+  targetLanguage?: string;
 }
 
 /** BullMQ job names */

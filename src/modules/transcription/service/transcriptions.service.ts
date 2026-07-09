@@ -1,5 +1,5 @@
 // src/modules/transcriptions/service/transcriptions.service.ts
-import { Transcription, TranscriptQuote, TranslationSubtitles } from '@prisma/client';
+import { Transcription, TranscriptQuote } from '@prisma/client';
 import { logger } from '../../../shared/utils/logger'; // adjust path to match your logger location
 import { NotFoundError, ForbiddenError } from '../../../shared/errors';
 import {
@@ -10,8 +10,10 @@ import {
   TranscriptionWithQuotes,
   SearchDialogueResult,
 } from '../repository/transcription.repository';
-import { buildSrt, translateAll, uploadToGcs } from '@/shared/utils/translate';
-import { TranslatationResult } from '@/shared/types/domain';
+import { translateAll } from '@/shared/utils/translate';
+import { mapSegment } from '@/shared/utils/translate';
+import { formatSubtitle } from '@/shared/utils/subtitle.formatters';
+import { SubtitleFormat } from '@/shared/types/subtitle.types';
 
 
 class TranscriptionsService {
@@ -52,25 +54,11 @@ class TranscriptionsService {
     return transcription as TranscriptionWithSegments;
   }
 
- async translateTranscrptionWorker(segments:any, sourceLanguage:string,  targetLanguage: string): Promise<TranslatationResult> {
-    
- 
-    const translatedSrt = await translateAll(segments,targetLanguage, sourceLanguage);
-    const transcript = translatedSrt
-      .sort((a, b) => a.segmentId - b.segmentId)
-      .map(segment => segment.translatedText.trim())
-      .join(" ");
-  
-    const str = buildSrt(translatedSrt);
-
-    
-    return {str, transcript};
-  }
+//  
 
 
 
-
-  async translateTranscrption(id: string, userId: string, targetLanguage: string): Promise<TranslationSubtitles> {
+  async translateTranscrption(id: string, targetLanguage: string): Promise<Transcription> {
 
 
     const transcription = await transcriptionsRepository.findByIdWithSegment(id);
@@ -78,28 +66,19 @@ class TranscriptionsService {
     if(!transcription){
       throw new Error("Transcription not found")
     }
+    const mappedSegments = mapSegment(transcription.segments)
+    const transcriptionTranslated =  await translateAll(mappedSegments ,targetLanguage, true);
     
-    const translatedSrt = await translateAll(transcription?.segments,targetLanguage, transcription?.language);
-     const transcript = translatedSrt
-      .sort((a, b) => a.segmentId - b.segmentId)
-      .map(segment => segment.translatedText.trim())
-      .join(" ");
-  
-    const srtContent = buildSrt(translatedSrt);
-    const url = await uploadToGcs(userId, transcription.filename, targetLanguage, srtContent);
 
-    const translationPayload = {
-          fileKey: url,
-          transcriptionId: transcription.id,
-          sourceLanguage: transcription?.language as string,
-          targetLanguage: targetLanguage,
-          filename: transcription.filename,
-          translatedTranscript: transcript
+    await transcriptionsRepository.updateTranslatedSegments(transcription.id, transcriptionTranslated)
+
+    const updatedTranscription = await transcriptionsRepository.findByIdWithSegment(id);
+    const content = formatSubtitle(transcriptionTranslated, SubtitleFormat.TXT, true);
+    if(!updatedTranscription){
+      throw new Error("Transcription not found")
     }
-    const translatedSubtitle =  await transcriptionsRepository.createTranslatedSubtitles(translationPayload);
-
-    
-    return translatedSubtitle;
+    updatedTranscription.transcript = content
+    return updatedTranscription;
   }
 
 

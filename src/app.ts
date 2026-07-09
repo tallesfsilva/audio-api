@@ -21,6 +21,7 @@ import internalRouter from './modules/internal/internal.router';
 import paymentsRouter from './modules/payments/payments.router';
 import adminRouter from './modules/admin/admin.router'
 import supportRouter from './modules/support/support.router'
+import subtitleRouter from './modules/subtitle/subtitle.router'
 import { transcriptionsRouter } from './modules/transcription/transcriptions.routes';
 
    
@@ -86,7 +87,7 @@ export function createApp(): Application {
   app.use(`${prefix}/users`,    usersRouter);
   app.use(`${prefix}/support`,    supportRouter);
   app.use(`${prefix}/transcriptions`,    transcriptionsRouter);
-  
+    app.use(`${prefix}/subtitle`,    subtitleRouter);
   app.set('trust proxy', 1);
   app.set("json replacer", (_key: string, value: unknown) => {
   return typeof value === "bigint"

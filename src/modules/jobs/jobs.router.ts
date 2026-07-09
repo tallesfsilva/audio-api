@@ -20,8 +20,6 @@ router.get('/:id', (req, res) => jobsController.getById(req, res));
 /** POST /api/v1/jobs/:id/cancel */
 router.post('/:id/cancel', (req, res) => jobsController.cancel(req, res));
 
-router.get('/:id/download', (req, res) => jobsController.download(req, res));
-
 /** DELETE /api/v1/jobs/:id */
 router.delete('/:id', (req, res) => jobsController.delete(req, res));
 

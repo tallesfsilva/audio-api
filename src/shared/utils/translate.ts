@@ -1,56 +1,64 @@
 
 import { v2 as Translate } from "@google-cloud/translate";
-import { Storage } from "@google-cloud/storage";
-import { config } from "@/config";
+import { Word } from "../types/domain";
+ 
 
 const translateClient = new Translate.Translate({
   projectId: "substantial-mix-485814-v7",
 });
-// const storage = new Storage();
-
-const storage = new Storage({
-  keyFilename: "/SECRET/SERVICE_ACCOUNT",
-});
-const BUCKET_NAME = config.GCS_UPLOAD_BUCKET as string;
-interface SegmentInput {
-  id: bigint;
-  segmentId: number;
-  startTime: any;
-  endTime: any;
-  text: string;
  
-}
 
-interface TranslatedSegment {
+export function mapSegment(segments:  any[]) {
+  try{
+  return segments.map((seg) => ({
+     segmentId:   seg.segmentId,
+    startTime:   Number(seg.startTime),
+    endTime: Number(seg.endTime),
+    text: seg.text,
+    originalText: seg?.originalText,
+    language: (seg as any).language,
+    words: (seg as any).words,
+    language_probability: (seg as any).language_probability,
+  }));
+}catch(e){
+  throw e
+}
+}
+/**
+ * Each segment now carries its own detected source language.
+ * Update SegmentInput accordingly in your payload/types.
+ */
+export interface SegmentInput {
   segmentId: number;
   startTime: number;
   endTime: number;
-  translatedText: string;
-}// --------------------------------------------------------------------------
-// Batching — group consecutive segments for context, capped by size
+  text: string;
+  originalText?: string;
+  words?: Word[];
+  language: string; 
+  language_probability?: number;
+}
+
+ 
+
+export interface TranslatedSegment {
+  segmentId: number;
+  startTime: number;
+  originalText?: string;
+  translatedText?: string;
+  language?: string;
+  endTime: number;
+  text: string;
+}
+
+// --------------------------------------------------------------------------
+// Internal: group segments by sourceLanguage, preserving their original index
+// so we can rebuild in-order results after translating each group separately.
 // --------------------------------------------------------------------------
 
-function makeBatches(
-  segments: SegmentInput[],
-  maxChars = 15000, // Google Translate batches well; stay under request limits
-  maxItems = 100
-): SegmentInput[][] {
-  const batches: SegmentInput[][] = [];
-  let current: SegmentInput[] = [];
-  let currentChars = 0;
-
-  for (const seg of segments) {
-    if (current.length && (currentChars + seg.text.length > maxChars || current.length >= maxItems)) {
-      batches.push(current);
-      current = [];
-      currentChars = 0;
-    }
-    current.push(seg);
-    currentChars += seg.text.length;
-  }
-  if (current.length) batches.push(current);
-
-  return batches;
+interface IndexedSegment {
+  originalIndex: number;
+  segment: SegmentInput;
 }
 
 // --------------------------------------------------------------------------
@@ -95,99 +103,119 @@ async function translateOneByOne(
   }
   return outputs;
 }
+function makeBatches(
+  segments: SegmentInput[],
+  maxChars = 15000, // Google Translate batches well; stay under request limits
+  maxItems = 100
+): SegmentInput[][] {
+  const batches: SegmentInput[][] = [];
+  let current: SegmentInput[] = [];
+  let currentChars = 0;
 
-// --------------------------------------------------------------------------
-// SRT building + GCS upload
-// --------------------------------------------------------------------------
+  for (const seg of segments) {
+    if (current.length && (currentChars + seg.text.length > maxChars || current.length >= maxItems)) {
+      batches.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push(seg);
+    currentChars += seg.text.length;
+  }
+  if (current.length) batches.push(current);
 
-function formatSrtTimestamp(seconds: number): string {
-  const ms = Math.round(seconds * 1000);
-  const h = Math.floor(ms / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  const s = Math.floor((ms % 60_000) / 1000);
-  const millis = ms % 1000;
-  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)},${pad(millis, 3)}`;
+  return batches;
 }
-export function mapSegment(segments: any[]) {
-  return segments.map((seg) => ({
-    segmentId: seg.id,
-    startTime: seg.start,
-    endTime: seg.end,
-    text: seg.text,
-  }));
-}
+function groupBySourceLanguage(segments: SegmentInput[]): Map<string, IndexedSegment[]> {
+  const groups = new Map<string, IndexedSegment[]>();
 
-export function buildSrt(translated: TranslatedSegment[]): string {
-  return translated
-    .map((seg, i) => {
-      return [
-        String(i + 1),
-        `${formatSrtTimestamp(seg.startTime)} --> ${formatSrtTimestamp(seg.endTime)}`,
-        seg.translatedText,
-        "",
-      ].join("\n");
-    })
-    .join("\n");
-}
+  segments.forEach((segment, originalIndex) => {
+    // Normalise null/unknown to the sentinel "auto" so Google auto-detects
+    const key = segment.language ?? "auto";
 
-export async function uploadToGcs(userId: string, fileName: string, targetLang: string, srtContent: string): Promise<string> {
-
-
-  const parsedFilename = fileName.split(".")[0] ;
-  const blobPath = `results/${userId}/translations/${parsedFilename}.${targetLang}.srt`;
-  const bucket = storage.bucket(BUCKET_NAME);
-  await bucket.file(blobPath).save(srtContent, {
-    contentType: "text/plain; charset=utf-8",
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push({ originalIndex, segment });
   });
- 
- const file = bucket.file(blobPath as string);
-        
-    const [signedUrl] = await file.getSignedUrl({
-        version: "v4",
-        action: "read",
-        expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        responseDisposition: `attachment;`,
-    });
 
-    return signedUrl;
-
-
+  return groups;
 }
+
+// --------------------------------------------------------------------------
+// Refactored translateAll
+// --------------------------------------------------------------------------
+
 export async function translateAll(
   segments: SegmentInput[],
   targetLang: string,
-  sourceLang: string | null | undefined,
+  translateSub?: boolean
 ): Promise<TranslatedSegment[]> {
-  const batches = makeBatches(segments);
-  const results: TranslatedSegment[] = [];
- 
-  let done = 0;
+  // Pre-allocate result array so we can write back by original index
+  // regardless of which group/batch finishes in what order.
+  const results = new Array<TranslatedSegment>(segments.length);
 
-  for (const batch of batches) {
-    const texts = batch.map((s) => s.text);
-    let translatedTexts: string[];
+  const groups = groupBySourceLanguage(segments);
 
-    try {
-      translatedTexts = await translateBatch(texts, targetLang, sourceLang);
-    } catch (err) {
-      console.warn(`Batch of ${batch.length} failed/misaligned, retrying per-segment`, err);
-      translatedTexts = await translateOneByOne(batch, targetLang, sourceLang);
+  // Process each source-language group independently.
+  // Groups with the same source language share batches → fewer API calls.
+  for (const [sourceLang, indexed] of groups) {
+    const resolvedSource = sourceLang === "auto" ? null : sourceLang;
+
+    // --- Skip translation: source and target are the same language ---
+    // Normalise to base tag before comparing ("pt-BR" → "pt") so variants
+    // don't cause unnecessary round-trips.
+    const baseSource = resolvedSource?.split("-")[0].toLowerCase();
+    const baseTarget = targetLang.split("-")[0].toLowerCase();
+
+    if (baseSource && baseSource === baseTarget) {
+      for (const { originalIndex, segment } of indexed) {
+        results[originalIndex] = {
+          segmentId: segment.segmentId,
+          startTime: segment.startTime,
+          originalText: segment.originalText,
+          endTime: segment.endTime,
+          text: segment.text, // no-op: copy original text
+        };
+      }
+      continue;
     }
 
-    batch.forEach((seg, i) => {
-      results.push({
-        segmentId: seg.segmentId,
-        startTime: seg.startTime,
-        endTime: seg.endTime,
-        translatedText: translatedTexts[i],
-      });
-    });
+    // --- Translate this group in batches ---
+    const groupSegments = indexed.map((i) => i.segment);
+    const batches = makeBatches(groupSegments);
 
-    done += batch.length;
+    let groupDone = 0;
+
+    for (const batch of batches) {
+
+      const texts = batch.map((s) => translateSub ? s?.originalText as string : s.text);
+      let translatedTexts: string[];
+
+      try {
+        translatedTexts = await translateBatch(texts, targetLang, resolvedSource);
+      } catch (err) {
+        console.warn(
+          `Batch of ${batch.length} (${sourceLang} → ${targetLang}) failed/misaligned, retrying per-segment`,
+          err
+        );
+        translatedTexts = await translateOneByOne(batch, targetLang, resolvedSource);
+      }
+
+      batch.forEach((seg, batchIndex) => {
+        // Map back to the original position in the output array
+        const originalIndex = indexed[groupDone + batchIndex].originalIndex;
+
+        results[originalIndex] = {
+          segmentId: seg.segmentId,
+          startTime: seg.startTime,
+          originalText: seg.originalText,
+          endTime: seg.endTime,
+          text: translateSub ? seg.text : translatedTexts[batchIndex],
+          translatedText: translateSub ? translatedTexts[batchIndex] : ""
+        };
+      });
+
+      groupDone += batch.length;
+    }
   }
 
   return results;
 }
-
- 

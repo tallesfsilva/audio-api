@@ -196,11 +196,14 @@ export interface Word {
 }
 
 export interface Segment {
-  id: number;
-  start: number;
-  end: number;
+  segmentId: number;
+  startTime: number;
+  endTime: number;
   text: string;
   words?: Word[];
+  originalText: string;
+  language: string;
+  language_probability?: number;
 }
 
 export interface Result {

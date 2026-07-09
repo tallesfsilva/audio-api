@@ -15,17 +15,12 @@ import { getSocket } from '@/infrastructure/socket';
 
 import nodemailer, { Transporter } from "nodemailer";
 import { jobRepository } from '../jobs/repository/jobs.repository';
-import { transcriptionsService } from '../transcription/service/transcriptions.service';
-import { mapSegment } from '@/shared/utils/translate';
+ 
 const router = Router();
 
 let transporter: Transporter | null = null;
 
-import { Storage } from '@google-cloud/storage';
-
-const storage = new Storage({
-  keyFilename: "/SECRET/SERVICE_ACCOUNT",
-});
+ 
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")
@@ -40,7 +35,7 @@ async function sendUserConfirmationEmail(params: {
   subject: string;
   jobId: string;
   filename: string;
-  resultKey: string;
+  resultKey?: string;
 }): Promise<void> {
   const mailer = getTransporter();
 
@@ -266,28 +261,15 @@ const ResultSchema = z.object({
   durationSeconds: z.number().optional(),
   wordCount: z.number().int().optional(),
   charCount: z.number().int().optional(),
-
-  resultKey: z.string().optional(),
-  resultText: z.string().optional(),
-  transcription: z.string().optional(),
-  resultTextKey: z.string().optional(),
+ 
 
   erroMessage: z.string().nullable().optional(),
-
+  targetLanguage: z.string().optional(),
   transcriptionKey: z.string(),
-  // resultAssKey: z.string(),
+ 
 });
 
  
-
-
-const TranslateSchema = z.object({
-  targetLanguage: z.string(),
-  jobId: z.string().uuid(),
-  sourceLanguage: z.string(),
-  transcriptionKey: z.string()
-});
-
 
 /** POST /api/v1/internal/jobs/:id/progress */
 router.post('/jobs/:id/progress',  express.json({
@@ -322,92 +304,6 @@ router.post('/jobs/:id/progress',  express.json({
 });
 
 
-/** POST /api/v1/internal/jobs/:id/progress */
-router.post('/jobs/:id/translate',  express.json({
-  verify: (req: Request, _res, buf) => {
-    req.rawBody = buf; // Buffer of the exact bytes received
-  }
-}), async (req: Request, res: Response,  next: NextFunction) => {
-  try{
-
-
-
-  verifyCallbackSignature(req);
-
-  const body = TranslateSchema.parse(req.body);
-
-  if (body.jobId !== req.params.id) {
-      throw new ValidationError('jobId mismatch');
-    }
-
-  const [contents] = await storage.bucket(config.GCS_BUCKET).file(body.transcriptionKey).download();
-
-  const transcription = JSON.parse(contents.toString("utf8"));
-  const segmentsMapped = mapSegment(transcription.segments as []) 
-  const strTranslated = await transcriptionsService.translateTranscrptionWorker(segmentsMapped,body.sourceLanguage, body.targetLanguage)
-
- 
-  respond(res, {strTranslated: strTranslated.str, transcript: strTranslated.transcript,  success: true });
-    }catch(e){
-      console.error("Error parsing: ", e)
-      next(new ValidationError('Error Parsing'));
-    }
-});
-
-
-/** POST /api/v1/internal/jobs/:id/callback */
-// router.post('/jobs/:id/callback-v2',  express.json({
-//   limit: '5mb',
-//   verify: (req: Request, _res:Response, buf) => {
-//     req.rawBody = buf; // Buffer of the exact bytes received
-//   },
-// }), async (req: Request, res: Response, next: NextFunction) => {
-//   try{
-//     verifyCallbackSignature(req);
-//     const body = ResultSchema.parse(req.body);
-
-//     if (body.jobId !== req.params.id) {
-//       throw new ValidationError('jobId mismatch');
-//     }
-//     respond(res, { received: true });
-//     jobsService.applyCallbackResult(body.jobId, body).catch(err => {
-//           logger.error('Failed to apply callback result', { jobId: body.jobId, err });
-//       });
-      
-//     const job = await jobRepository.findJobAndUser(body.jobId)
-    
-
-//     await sendUserConfirmationEmail({
-//         to: job?.user?.email as string,
-//         subject: "Your Transcription Job is Completed!",
-//         jobId: body.jobId,
-//         filename: job?.originalFileName as string,
-//         resultKey: job?.resultKey as string,
-
-//     })
-//     const io = getSocket();
-   
-
-//     if(io){
-//        io.to(`job:${body.jobId}`).emit("job:update", {
-//       jobId: body.jobId,
-//       status: "done",
-//   });
-//   }
-
-//     logger.info('Job callback received', { jobId: body.jobId, success: body.success });
-    
-//   }catch(e){
-//       console.error("Error parsing: ", e)
-//       next(new ValidationError('Error Parsing'));
-//   }
-  
-// });
-
-
-
-
-
 /** POST /api/v1/internal/jobs/:id/callback */
 router.post('/jobs/:id/callback',  express.json({
   limit: '5mb',
@@ -435,7 +331,7 @@ router.post('/jobs/:id/callback',  express.json({
         subject: "Your Transcription Job is Completed!",
         jobId: body.jobId,
         filename: job?.originalFileName as string,
-        resultKey: body?.resultKey as string,
+ 
 
     })
     const io = getSocket();

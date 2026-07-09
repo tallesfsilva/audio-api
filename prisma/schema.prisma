@@ -332,8 +332,11 @@ model Transcription {
   updatedAt       DateTime        @updatedAt
 
   segments        TranscriptionSegment[]
+  
   quotes          TranscriptQuote[]
-  translation     TranslationSubtitles[]    
+  translation     TranslationSubtitles[]   
+
+  targetLanguage  String? 
 
   @@index([jobId])
   @@index([userId])
@@ -352,6 +355,12 @@ model TranscriptionSegment {
   endTime         Decimal         @db.Decimal(12, 3)
 
   text            String          @db.Text
+  originalText    String?         @db.Text
+  translatedText  String?         @db.Text
+
+  language        String?
+
+  language_probability  Float?          
 
   createdAt       DateTime        @default(now())
 
@@ -363,6 +372,7 @@ model TranscriptionSegment {
 
   @@index([transcriptionId])
   @@index([segmentId])
+  @@unique([transcriptionId, segmentId])
 
  
 }

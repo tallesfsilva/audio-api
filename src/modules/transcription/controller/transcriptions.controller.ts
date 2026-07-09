@@ -54,7 +54,7 @@ class TranscriptionsController {
     const {targetLanguage} = req.body
 
 
-    const result = await transcriptionsService.translateTranscrption(transcriptionId, req.user.sub, targetLanguage);
+    const result = await transcriptionsService.translateTranscrption(transcriptionId, targetLanguage);
     respond(res, result);
   }
 

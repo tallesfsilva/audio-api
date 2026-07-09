@@ -1,6 +1,7 @@
 // src/modules/transcriptions/repository/transcriptions.repository.ts
 import { Prisma, Transcription, TranscriptionSegment, TranscriptQuote, TranslationSubtitles } from '@prisma/client';
 import { prisma } from '../../../infrastructure/database/client';
+import { TranslatedSegment } from '@/shared/utils/translate';
 
 export type TranscriptionWithSegments = Prisma.TranscriptionGetPayload<{
   include: { segments: { include: { words: true } } };
@@ -20,6 +21,9 @@ export interface CreateSegmentInput {
   startTime: number;
   endTime: number;
   text: string;
+  originalText?: string;
+  language?: string;
+  language_probability?: number;
   words?: Array<{
     word: string;
     startTime?: number;
@@ -42,6 +46,7 @@ export interface CreateTranscriptionInput {
   jobId: string;
   userId: string;
   filename: string;
+  targetLanguage?: string;
   language?: string;
   durationSeconds?: number;
   wordCount?: number;
@@ -91,6 +96,7 @@ class TranscriptionsRepository {
         userId: input.userId,
         filename: input.filename,
         language: input.language,
+        targetLanguage: input.targetLanguage,
         durationSeconds: input.durationSeconds,
         wordCount: input.wordCount ?? 0,
         charCount: input.charCount ?? 0,
@@ -115,8 +121,12 @@ class TranscriptionsRepository {
             transcriptionId: transcription.id,
             segmentId: segment.segmentId,
             startTime: segment.startTime,
+            originalText: segment?.originalText,
             endTime: segment.endTime,
             text: segment.text,
+            language: segment.language,
+            language_probability: segment.language_probability,
+
           })),
           select: {
             id: true,
@@ -172,6 +182,22 @@ class TranscriptionsRepository {
         },
       },
     });
+  }
+
+    async findByJobIdWithSegments(id: string): Promise<TranscriptionWithSegments | null> {
+      try{
+      return prisma.transcription.findUnique({
+      where: { jobId: id },
+      include: {
+        segments: {
+          orderBy: { segmentId: 'asc' },
+          include: { words: { orderBy: { startTime: 'asc' } } },
+        },
+      },
+    });
+  }catch(e) {
+    throw e
+  }
   }
   async findByIdWithSegments(id: string): Promise<TranscriptionWithSegments | null> {
     return prisma.transcription.findUnique({
@@ -265,6 +291,26 @@ async createTranslatedSubtitles(
   return prisma.translationSubtitles.create({
     data,
   });
+}
+async updateTranslatedSegments(
+  transcriptionId: string,
+  segments: TranslatedSegment[]
+) {
+await prisma.$transaction(
+  segments.map(segment =>
+    prisma.transcriptionSegment.update({
+      where: {
+        transcriptionId_segmentId: {
+          transcriptionId: transcriptionId,
+          segmentId: segment.segmentId,
+        },
+      },
+      data: {
+        translatedText: segment.translatedText,
+      },
+    })
+  )
+);
 }
 
   async findSegmentsByTranscriptionId(transcriptionId: string): Promise<TranscriptionSegment[]> {

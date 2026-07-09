@@ -10,10 +10,11 @@ import { logger } from '../../../shared/utils/logger';
  
 import { config } from '@/config';
  
- import { Storage } from '@google-cloud/storage';
+import { Storage } from '@google-cloud/storage';
+import { translateAll } from '@/shared/utils/translate';
 
 
-
+// const storage = new Storage();
 const storage = new Storage({
   keyFilename: "/SECRET/SERVICE_ACCOUNT",
 });
@@ -31,7 +32,7 @@ export function buildCreateTranscriptionInput(
     filename: job.originalFileName,
 
     language: result.language,
-
+    targetLanguage: result.targetLanguage,
     durationSeconds:
       result.durationSeconds ??
       job.durationSeconds ??
@@ -51,12 +52,17 @@ export function buildCreateTranscriptionInput(
 
     segments:
       result.segments?.map(segment => ({
-        segmentId: segment.id,
+        segmentId: segment.segmentId,
 
-        startTime: segment.start,
-        endTime: segment.end,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
 
         text: segment.text,
+        originalText: segment?.originalText,
+
+        language: segment.language as string ?? result.language,
+
+        language_probability: segment.language_probability,
 
         words: segment.words?.map(word => ({
           word: word.word.trim(),
@@ -139,7 +145,7 @@ class JobsService {
         language: result.language,
         resultKey: result.resultKey,
         resultText: result.resultText,
-        resultTextKey: result.resultTextKey,
+     
       });
 
       // Bill the minutes used
@@ -151,8 +157,18 @@ class JobsService {
        const [contents] = await storage.bucket(config.GCS_BUCKET).file(result.transcriptionKey).download();
         
         const transcription = JSON.parse(contents.toString("utf8"));
-        result.segments = transcription.segments
-   
+        result.segments = transcription.segments;
+        let targetLanguage = "";
+        let transcriptionTranslated  = null;
+
+        if(result?.targetLanguage){
+          targetLanguage = result.targetLanguage;
+        
+          transcriptionTranslated =  await translateAll(transcription.segments ,targetLanguage, false);
+        }
+        
+       result.segments =   transcriptionTranslated ? transcriptionTranslated : transcription
+
         const transcriptionInput =
           buildCreateTranscriptionInput(
             job,
@@ -183,36 +199,6 @@ class JobsService {
     await jobRepository.updateProgress(jobId, progress);
   }
 
-   async download(jobId: string, type: string): Promise<string> {
-      const job = await jobRepository.findById(jobId);
-
-    if(!type){
-        throw new Error('Must provide a type srt or text');
-    }
-
-  if (!job) {
-    throw new Error('Job not found');
-  }
-  const url = type === "srt" ? job?.resultKey : job?.resultTextKey
-
-     if(!url){
-          throw new Error('Subtitle not found');
-     }
-
-     const bucket = storage.bucket(config.GCS_BUCKET);
-       const file = bucket.file(url as string);
-      
-
-      const [signedUrl] = await file.getSignedUrl({
-        version: "v4",
-        action: "read",
-        expires: Date.now() + 60 * 60 * 1000, // 1 hour
-        responseDisposition: `attachment;`,
-      });
-
-      return signedUrl;
- 
-  }
 
   async getQueueMetrics() {
     return transcriptionQueue.getQueueMetrics();

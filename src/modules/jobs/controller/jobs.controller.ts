@@ -34,14 +34,7 @@ class JobsController {
     respond(res, job);
   }
 
-   async download(req: Request, res: Response): Promise<void> {
-    if (!req.user) throw new UnauthorizedError();
-    const {type} = req.query
-    const { id } = JobIdParamSchema.parse(req.params);
-    const url = await jobsService.download(id, type as string);
-    respond(res, url);
-  }
-
+  
   async cancel(req: Request, res: Response): Promise<void> {
     if (!req.user) throw new UnauthorizedError();
     const { id } = JobIdParamSchema.parse(req.params);
