@@ -40,7 +40,9 @@ class SubtitleService {
          content = formatSubtitle(mappedSegments, dto.format, false, dto?.assOption);
         const extension = dto.format.toLowerCase();
 
-        const filename = `${transcription.filename.split(".")[0]}.${transcription.targetLanguage}.${extension}`;
+        const language = transcription.targetLanguage ? transcription.targetLanguage : transcription.language
+
+        const filename = `${transcription.filename}.${language}.${extension}`;
 
         const mimeType = {
             srt: "application/x-subrip",
